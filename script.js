@@ -51,10 +51,14 @@ function init() {
   const redCount = +document.getElementById('redCount').value;
   const blueCount = +document.getElementById('blueCount').value;
   for (let i = 0; i < redCount; i++) {
-    agents.push(new Agent(Math.random() * canvas.width, Math.random() * canvas.height, 'red'));
+    const x = Math.random() * canvas.width * 0.2;
+    const y = Math.random() * canvas.height;
+    agents.push(new Agent(x, y, 'red'));
   }
   for (let i = 0; i < blueCount; i++) {
-    agents.push(new Agent(Math.random() * canvas.width, Math.random() * canvas.height, 'blue'));
+    const x = Math.random() * canvas.width * 0.2 + canvas.width * 0.8;
+    const y = Math.random() * canvas.height;
+    agents.push(new Agent(x, y, 'blue'));
   }
   updateStats();
 }
