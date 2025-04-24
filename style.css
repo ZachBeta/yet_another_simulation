@@ -1,0 +1,15 @@
+body {
+  margin: 0;
+  font-family: sans-serif;
+}
+#controls {
+  padding: 8px;
+  background: #eee;
+}
+#controls label {
+  margin-right: 12px;
+}
+canvas {
+  display: block;
+  background: #222;
+}

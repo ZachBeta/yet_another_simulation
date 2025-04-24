@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Battle Sim Prototype</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="controls">
+    <label>Red Units: <input id="redCount" type="number" value="50" min="1" /></label>
+    <label>Blue Units: <input id="blueCount" type="number" value="50" min="1" /></label>
+    <button id="startBtn">Start</button>
+    <button id="pauseBtn">Pause</button>
+    <button id="resetBtn">Reset</button>
+    <span id="stats"></span>
+  </div>
+  <canvas id="battleCanvas" width="800" height="600"></canvas>
+  <script src="script.js"></script>
+</body>
+</html>
