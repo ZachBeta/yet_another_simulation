@@ -18,14 +18,33 @@ class Agent {
     if (this.health <= 0) return;
     const enemies = agents.filter(a => a.team !== this.team && a.health > 0);
     if (enemies.length === 0) return;
+    // find closest
     let target = enemies[0], dmin = dist(this, target);
     for (let e of enemies) {
       const d = dist(this, e);
       if (d < dmin) { dmin = d; target = e; }
     }
+    // separation force to avoid overlapping
+    let sepX = 0, sepY = 0;
+    const sepRange = 10;
+    const sepStrength = 0.5;
+    for (const other of agents) {
+      if (other !== this && other.health > 0) {
+        const d = dist(this, other);
+        if (d < sepRange && d > 0) {
+          sepX += (this.x - other.x) / d;
+          sepY += (this.y - other.y) / d;
+        }
+      }
+    }
     if (dmin > this.attackRange) {
-      this.x += (target.x - this.x) / dmin * this.speed;
-      this.y += (target.y - this.y) / dmin * this.speed;
+      // move towards target with separation
+      let mvX = (target.x - this.x) / dmin * this.speed;
+      let mvY = (target.y - this.y) / dmin * this.speed;
+      mvX += sepX * sepStrength;
+      mvY += sepY * sepStrength;
+      this.x += mvX;
+      this.y += mvY;
     } else {
       target.health -= this.attackDamage;
     }
