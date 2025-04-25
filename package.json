@@ -1,0 +1,11 @@
+{
+  "name": "battle-sim-prototype",
+  "version": "1.0.0",
+  "description": "Rapid web-based sandbox for agent-based battle simulation",
+  "scripts": {
+    "start": "live-server . --port=8000 --watch=index.html,script.js,style.css"
+  },
+  "devDependencies": {
+    "live-server": "^1.2.1"
+  }
+}

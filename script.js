@@ -1,3 +1,6 @@
+/**
+ * @typedef {'red'|'blue'} Team
+ */
 const canvas = document.getElementById('battleCanvas');
 const ctx = canvas.getContext('2d');
 let agents = [], paused = true;
@@ -6,7 +9,15 @@ document.getElementById('startBtn').onclick = () => paused = false;
 document.getElementById('pauseBtn').onclick = () => paused = true;
 document.getElementById('resetBtn').onclick = () => { paused = true; init(); };
 
+/**
+ * Represents an agent unit in the battle simulation.
+ */
 class Agent {
+  /**
+   * @param {number} x - initial x position
+   * @param {number} y - initial y position
+   * @param {Team} team - team designation
+   */
   constructor(x, y, team) {
     this.x = x; this.y = y; this.team = team;
     this.health = 100;
@@ -14,6 +25,10 @@ class Agent {
     this.attackRange = 5;
     this.attackDamage = 0.8;
   }
+  /**
+   * Update agent state each frame.
+   * @returns {void}
+   */
   update() {
     if (this.health <= 0) return;
     const enemies = agents.filter(a => a.team !== this.team && a.health > 0);
@@ -49,6 +64,10 @@ class Agent {
       target.health -= this.attackDamage;
     }
   }
+  /**
+   * Draw the agent to the canvas with opacity = health.
+   * @returns {void}
+   */
   draw() {
     if (this.health <= 0) return;
     const opacity = Math.max(this.health / 100, 0);
