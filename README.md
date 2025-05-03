@@ -29,8 +29,16 @@ npm start
 
 Open [http://localhost:8000](http://localhost:8000) in your browser.
 
+## Current State
+
+- Four teams (orange, yellow, green, blue) battle each other in their quadrants.
+- Agents use simple nearest-enemy targeting + separation and melee attack.
+- Next: integrate neural-network decision making for approach/orbit/target/fire/salvage loop.
+
 ## Screenshots
 
-![Screenshot 1](./Screenshot%202025-04-27%20at%2009.48.23.png)
-![Screenshot 2](./Screenshot%202025-04-27%20at%2009.48.26.png)
-![Screenshot 3](./Screenshot%202025-04-27%20at%2009.48.28.png)
+![Screenshot 2025-05-03 at 11.42.18](./Screenshot%202025-05-03%20at%2011.42.18.png)
+![Screenshot 2025-05-03 at 11.42.21](./Screenshot%202025-05-03%20at%2011.42.21.png)
+![Screenshot 2025-05-03 at 11.42.24](./Screenshot%202025-05-03%20at%2011.42.24.png)
+![Screenshot 2025-05-03 at 11.42.26](./Screenshot%202025-05-03%20at%2011.42.26.png)
+![Screenshot 2025-05-03 at 11.42.28](./Screenshot%202025-05-03%20at%2011.42.28.png)
