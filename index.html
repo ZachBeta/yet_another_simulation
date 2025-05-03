@@ -7,7 +7,9 @@
 </head>
 <body>
   <div id="controls">
-    <label>Red Units: <input id="redCount" type="number" value="50" min="1" /></label>
+    <label>Orange Units: <input id="orangeCount" type="number" value="50" min="1" /></label>
+    <label>Yellow Units: <input id="yellowCount" type="number" value="50" min="1" /></label>
+    <label>Green Units: <input id="greenCount" type="number" value="50" min="1" /></label>
     <label>Blue Units: <input id="blueCount" type="number" value="50" min="1" /></label>
     <button id="startBtn">Start</button>
     <button id="pauseBtn">Pause</button>
@@ -15,15 +17,6 @@
     <span id="stats"></span>
   </div>
   <canvas id="battleCanvas" width="800" height="600"></canvas>
-  <script type="module">
-    import init, { Simulation } from './wasm/pkg/sim_core.js';
-    async function startWasm() {
-      await init();
-      const sim = Simulation.new(800, 600, 1, 1);
-      console.log('WASM loaded, agents len:', sim.agents_len());
-    }
-    startWasm();
-  </script>
-  <script src="script.js"></script>
+  <script type="module" src="script.js"></script>
 </body>
 </html>
