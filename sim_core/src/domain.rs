@@ -51,6 +51,22 @@ pub enum Action {
     Idle,                   // no-op
 }
 
+/// Read-only view of world state for an agent.
+pub struct WorldView<'a> {
+    pub self_idx: usize,
+    pub self_pos: Vec2,
+    pub self_team: usize,
+    pub self_health: f32,
+    pub positions: &'a [Vec2],
+    pub teams: &'a [usize],
+    pub healths: &'a [f32],
+}
+
+/// Agent decision interface.
+pub trait Agent {
+    fn think(&mut self, view: &WorldView) -> Action;
+}
+
 // Tests for core domain functionality
 #[cfg(test)]
 mod tests {

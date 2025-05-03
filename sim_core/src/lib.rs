@@ -4,7 +4,25 @@ use js_sys::Math;
 use std::collections::HashMap;
 
 mod domain;
-use domain::{Action, Weapon, Vec2};
+use domain::{Action, Weapon, Vec2, Agent, WorldView};
+
+mod config;
+use config::Config;
+
+mod movement;
+mod combat;
+mod bullet;
+mod ai;
+
+use crate::ai::NaiveAgent;
+
+/// Number of floats per agent in the flat buffer
+const AGENT_STRIDE: usize = 4;
+/// Offsets into an agent record
+const IDX_X: usize = 0;
+const IDX_Y: usize = 1;
+const IDX_TEAM: usize = 2;
+const IDX_HEALTH: usize = 3;
 
 #[wasm_bindgen]
 pub struct Simulation {
@@ -19,6 +37,10 @@ pub struct Simulation {
     idle_count: u32,
     /// hitscan segments: [x1,y1,x2,y2,...]
     hits_data: Vec<f32>,
+    /// Simulation configuration parameters
+    config: Config,
+    /// Agent implementations for decision making
+    agents_impl: Vec<Box<dyn Agent>>,
 }
 
 #[wasm_bindgen]
@@ -29,7 +51,7 @@ impl Simulation {
         let mut sim = Simulation {
             width,
             height,
-            agents_data: Vec::with_capacity(((orange + yellow + green + blue) * 4) as usize),
+            agents_data: Vec::with_capacity(((orange + yellow + green + blue) * AGENT_STRIDE as u32) as usize),
             bullets_data: Vec::new(),
             corpses_data: Vec::new(),
             commands: HashMap::new(),
@@ -37,6 +59,8 @@ impl Simulation {
             fire_count: 0,
             idle_count: 0,
             hits_data: Vec::new(),
+            config: Config::default(),
+            agents_impl: Vec::new(),
         };
         let counts = [orange, yellow, green, blue];
         // spawn agents per team in quadrants: 0=orange TL,1=yellow TR,2=green BL,3=blue BR
@@ -60,6 +84,11 @@ impl Simulation {
                 sim.agents_data.push(100.0);
             }
         }
+        // Register default NaiveAgent for each ship
+        let total_agents = sim.agents_data.len() / AGENT_STRIDE;
+        for _ in 0..total_agents {
+            sim.register_agent(Box::new(NaiveAgent::new(1.2, 0.8)));
+        }
         sim
     }
 
@@ -71,15 +100,31 @@ impl Simulation {
         self.idle_count = 0;
         // clear previous hits
         self.hits_data.clear();
-        // Phase 2: Command Collection
-        self.command_phase();
+        // Phase 2: Agent Decision
+        let (positions, teams, healths) = self.build_global_view();
+        for (idx, agent) in self.agents_impl.iter_mut().enumerate() {
+            let view = WorldView {
+                self_idx:    idx,
+                self_pos:    positions[idx],
+                self_team:   teams[idx],
+                self_health: healths[idx],
+                positions:   &positions,
+                teams:       &teams,
+                healths:     &healths,
+            };
+            let action = agent.think(&view);
+            self.commands.insert(idx, action);
+        }
+
         // Phase 3: Movement System
-        self.movement_phase();
+        movement::run(self);
+
         // Phase 4: Combat System
-        self.combat_phase();
+        combat::run(self);
+
         // Phase 5: Bullet System
-        self.bullet_phase();
-        // TODO: Phase 6 scavenge_phase, Phase 7 cleanup_phase
+        bullet::run(self);
+
         // Ready for next tick
         self.commands.clear();
     }
@@ -121,190 +166,24 @@ impl Simulation {
         self.commands.insert(actor_id, action);
     }
 
-    // Command collection phase: naive AI
-    fn command_phase(&mut self) {
-        let agent_count = self.agents_data.len() / 4;
-        let sep_range = 10.0;
-        let sep_strength = 0.5;
-        let attack_range = 50.0;
-        let speed = 1.2;
-        let attack_damage = 0.8;
-        for i in 0..agent_count {
-            let base = i * 4;
-            let health = self.agents_data[base + 3];
-            if health <= 0.0 { continue; }
-            let x = self.agents_data[base];
-            let y = self.agents_data[base + 1];
-            let team = self.agents_data[base + 2] as usize;
-            // nearest enemy
-            let mut target_idx = None;
-            let mut dmin = f32::MAX;
-            for j in 0..agent_count {
-                let h2 = self.agents_data[j*4 + 3];
-                let t2 = self.agents_data[j*4 + 2] as usize;
-                if j != i && h2 > 0.0 && t2 != team {
-                    let dx = self.agents_data[j*4] - x;
-                    let dy = self.agents_data[j*4 + 1] - y;
-                    let dist2 = dx*dx + dy*dy;
-                    if dist2 < dmin { dmin = dist2; target_idx = Some(j); }
-                }
-            }
-            // separation vector
-            let mut sep_dx = 0.0;
-            let mut sep_dy = 0.0;
-            for j in 0..agent_count {
-                let h2 = self.agents_data[j*4 + 3];
-                if j != i && h2 > 0.0 {
-                    let dx = x - self.agents_data[j*4];
-                    let dy = y - self.agents_data[j*4 + 1];
-                    let dist2 = dx*dx + dy*dy;
-                    if dist2 < sep_range*sep_range && dist2 > 0.0 {
-                        let d = dist2.sqrt();
-                        sep_dx += dx / d;
-                        sep_dy += dy / d;
-                    }
-                }
-            }
-            // decide action
-            let action = if let Some(ti) = target_idx {
-                let dist = dmin.sqrt();
-                if dist <= attack_range {
-                    self.fire_count += 1;
-                    Action::Fire { weapon: Weapon::Laser { damage: attack_damage, range: attack_range } }
-                } else {
-                    self.thrust_count += 1;
-                    let dx = self.agents_data[ti*4] - x;
-                    let dy = self.agents_data[ti*4 + 1] - y;
-                    let mut vx = dx / dist * speed;
-                    let mut vy = dy / dist * speed;
-                    vx += sep_dx * sep_strength;
-                    vy += sep_dy * sep_strength;
-                    Action::Thrust(Vec2 { x: vx, y: vy })
-                }
-            } else {
-                self.idle_count += 1;
-                Action::Idle
-            };
-            self.commands.insert(i, action);
-        }
+    /// Register an agent for decision making
+    pub fn register_agent(&mut self, agent: Box<dyn Agent>) {
+        self.agents_impl.push(agent);
     }
 
-    // Movement system: apply Thrust actions
-    fn movement_phase(&mut self) {
-        let w = self.width as f32;
-        let h = self.height as f32;
-        for (&id, action) in self.commands.iter() {
-            if let Action::Thrust(v) = action {
-                // each agent_data stores 4 floats: x,y,team,health
-                let base = id * 4;
-                let x = self.agents_data[base];
-                let y = self.agents_data[base + 1];
-                // integrate velocity and wrap
-                let moved = Vec2 { x: x + v.x, y: y + v.y }.wrap(w, h);
-                self.agents_data[base] = moved.x;
-                self.agents_data[base + 1] = moved.y;
-            }
+    /// Flatten agents_data buffers into read-only vectors
+    fn build_global_view(&self) -> (Vec<Vec2>, Vec<usize>, Vec<f32>) {
+        let count = self.agents_data.len() / AGENT_STRIDE;
+        let mut positions = Vec::with_capacity(count);
+        let mut teams = Vec::with_capacity(count);
+        let mut healths = Vec::with_capacity(count);
+        for i in 0..count {
+            let base = i * AGENT_STRIDE;
+            positions.push(Vec2 { x: self.agents_data[base + IDX_X], y: self.agents_data[base + IDX_Y] });
+            teams.push(self.agents_data[base + IDX_TEAM] as usize);
+            healths.push(self.agents_data[base + IDX_HEALTH]);
         }
-    }
-
-    // Combat system: apply Fire actions
-    fn combat_phase(&mut self) {
-        let agent_count = self.agents_data.len() / 4;
-        for (&id, action) in self.commands.iter() {
-            if let Action::Fire { ref weapon } = action {
-                match weapon {
-                    // hitscan: find nearest living enemy within weapon.range
-                    Weapon::Laser { damage, range } => {
-                        let base_i = id * 4;
-                        let sx = self.agents_data[base_i];
-                        let sy = self.agents_data[base_i + 1];
-                        let shooter_team = self.agents_data[base_i + 2] as usize;
-                        let mut closest = None;
-                        let mut dmin = f32::MAX;
-                        for j in 0..agent_count {
-                            let basej = j * 4;
-                            let h2 = self.agents_data[basej + 3];
-                            let t2 = self.agents_data[basej + 2] as usize;
-                            if j != id && h2 > 0.0 && t2 != shooter_team {
-                                let dx = self.agents_data[basej] - sx;
-                                let dy = self.agents_data[basej + 1] - sy;
-                                let dist2 = dx * dx + dy * dy;
-                                if dist2 < dmin {
-                                    dmin = dist2;
-                                    closest = Some(j);
-                                }
-                            }
-                        }
-                        if let Some(ti) = closest {
-                            if dmin <= range * range {
-                                // record hitscan
-                                let tb = ti * 4;
-                                self.hits_data.push(sx);
-                                self.hits_data.push(sy);
-                                self.hits_data.push(self.agents_data[tb]);
-                                self.hits_data.push(self.agents_data[tb + 1]);
-                                self.agents_data[tb + 3] -= damage;
-                                self.fire_count += 1;
-                            }
-                        }
-                    }
-                    Weapon::Missile { damage, speed: _, ttl: _ } => {
-                        // spawn simple bullet: push pos x,y and damage
-                        let base = id * 4;
-                        let x = self.agents_data[base];
-                        let y = self.agents_data[base+1];
-                        self.bullets_data.push(x);
-                        self.bullets_data.push(y);
-                        self.bullets_data.push(*damage);
-                        self.bullets_data.push(0.0);
-                    }
-                    _ => {}
-                }
-            }
-        }
-    }
-
-    // Phase 5: move bullets, decrement TTL, detect collisions & damage
-    fn bullet_phase(&mut self) {
-        let w = self.width as f32;
-        let h = self.height as f32;
-        let agent_count = self.agents_data.len() / 4;
-        let mut new_bullets = Vec::with_capacity(self.bullets_data.len());
-        for chunk in self.bullets_data.chunks(4) {
-            let mut x = chunk[0];
-            let mut y = chunk[1];
-            let damage = chunk[2];
-            let mut ttl = chunk[3] - 1.0;
-            if ttl <= 0.0 {
-                continue;
-            }
-            // wrap
-            let wrapped = Vec2 { x, y }.wrap(w, h);
-            x = wrapped.x;
-            y = wrapped.y;
-            // collision detection radius = 1.0
-            let mut hit = false;
-            for idx in 0..agent_count {
-                let base = idx * 4;
-                let health = self.agents_data[base + 3];
-                if health > 0.0 {
-                    let dx = self.agents_data[base] - x;
-                    let dy = self.agents_data[base + 1] - y;
-                    if dx*dx + dy*dy <= 1.0 {
-                        self.agents_data[base + 3] -= damage;
-                        hit = true;
-                        break;
-                    }
-                }
-            }
-            if !hit {
-                new_bullets.push(x);
-                new_bullets.push(y);
-                new_bullets.push(damage);
-                new_bullets.push(ttl);
-            }
-        }
-        self.bullets_data = new_bullets;
+        (positions, teams, healths)
     }
 }
 
