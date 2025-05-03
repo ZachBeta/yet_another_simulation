@@ -15,6 +15,15 @@
     <span id="stats"></span>
   </div>
   <canvas id="battleCanvas" width="800" height="600"></canvas>
+  <script type="module">
+    import init, { Simulation } from './wasm/pkg/sim_core.js';
+    async function startWasm() {
+      await init();
+      const sim = Simulation.new(800, 600, 1, 1);
+      console.log('WASM loaded, agents len:', sim.agents_len());
+    }
+    startWasm();
+  </script>
   <script src="script.js"></script>
 </body>
 </html>

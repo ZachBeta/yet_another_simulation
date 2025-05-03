@@ -1,1 +1,16 @@
 node_modules
+
+# Rust build outputs
+/sim_core/target/
+/sim_core/Cargo.lock
+
+# WASM build artifacts
+/wasm/pkg/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# macOS
+.DS_Store
