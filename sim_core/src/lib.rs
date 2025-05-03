@@ -17,6 +17,8 @@ pub struct Simulation {
     thrust_count: u32,
     fire_count: u32,
     idle_count: u32,
+    /// hitscan segments: [x1,y1,x2,y2,...]
+    hits_data: Vec<f32>,
 }
 
 #[wasm_bindgen]
@@ -34,6 +36,7 @@ impl Simulation {
             thrust_count: 0,
             fire_count: 0,
             idle_count: 0,
+            hits_data: Vec::new(),
         };
         let counts = [orange, yellow, green, blue];
         // spawn agents per team in quadrants: 0=orange TL,1=yellow TR,2=green BL,3=blue BR
@@ -66,6 +69,8 @@ impl Simulation {
         self.thrust_count = 0;
         self.fire_count = 0;
         self.idle_count = 0;
+        // clear previous hits
+        self.hits_data.clear();
         // Phase 2: Command Collection
         self.command_phase();
         // Phase 3: Movement System
@@ -88,6 +93,11 @@ impl Simulation {
 
     pub fn corpses_ptr(&self) -> *const f32 { self.corpses_data.as_ptr() }
     pub fn corpses_len(&self) -> usize { self.corpses_data.len() }
+
+    /// Pointer to hits_data array
+    pub fn hits_ptr(&self) -> *const f32 { self.hits_data.as_ptr() }
+    /// Length of hits_data array
+    pub fn hits_len(&self) -> usize { self.hits_data.len() }
 
     /// Load pretrained neural network weights (if any)
     pub fn load_weights(&mut self, _data: &[u8]) {
@@ -116,7 +126,7 @@ impl Simulation {
         let agent_count = self.agents_data.len() / 4;
         let sep_range = 10.0;
         let sep_strength = 0.5;
-        let attack_range = 5.0;
+        let attack_range = 50.0;
         let speed = 1.2;
         let attack_damage = 0.8;
         for i in 0..agent_count {
@@ -227,7 +237,12 @@ impl Simulation {
                         }
                         if let Some(ti) = closest {
                             if dmin <= range * range {
+                                // record hitscan
                                 let tb = ti * 4;
+                                self.hits_data.push(sx);
+                                self.hits_data.push(sy);
+                                self.hits_data.push(self.agents_data[tb]);
+                                self.hits_data.push(self.agents_data[tb + 1]);
                                 self.agents_data[tb + 3] -= damage;
                                 self.fire_count += 1;
                             }

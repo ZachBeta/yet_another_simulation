@@ -88,6 +88,30 @@ function draw() {
     ctx.beginPath();
     ctx.arc(x, y, 4, 0, 2*Math.PI);
     ctx.fill();
+    // overlay ranges for orange (team 0)
+    if (teamId === 0) {
+      // laser range fill (expanded)
+      ctx.fillStyle = 'rgba(255,165,0,0.05)';
+      ctx.beginPath();
+      ctx.arc(x, y, 50, 0, 2*Math.PI);
+      ctx.fill();
+      // separation zone
+      ctx.strokeStyle = 'rgba(255,165,0,0.15)';
+      ctx.beginPath();
+      ctx.arc(x, y, 10, 0, 2*Math.PI);
+      ctx.stroke();
+    }
+    // draw hitscan vectors
+    const hitsPtr = sim.hits_ptr() >>> 2;
+    const hitsLen = sim.hits_len();
+    ctx.strokeStyle = 'rgba(255,0,0,0.5)';
+    ctx.beginPath();
+    for (let i = hitsPtr; i < hitsPtr + hitsLen; i += 4) {
+      const x1 = mem[i], y1 = mem[i+1], x2 = mem[i+2], y2 = mem[i+3];
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+    }
+    ctx.stroke();
   }
 }
 
