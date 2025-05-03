@@ -26,6 +26,13 @@ let sim;
 let mem;
 let paused = true;
 
+// diagnostics
+let tick = 0;
+let tpsCounter = 0;
+let lastTpsUpdate = performance.now();
+const tickElem = document.getElementById('tickCount');
+const tpsElem = document.getElementById('tpsCount');
+
 // ROYGBIV palette: index 0=red,1=orange,2=yellow,3=green,4=blue,5=indigo,6=violet
 const COLORS = ['#FF0000','#FFA500','#FFFF00','#00FF00','#0000FF','#4B0082','#EE82EE'];
 const TEAM_COLORS = [COLORS[1], COLORS[2], COLORS[3], COLORS[4]];
@@ -39,16 +46,35 @@ function hexToRgba(hex, a) {
 
 function updateStats() {
   const counts = [0,0,0,0];
+  let sumHealth = 0;
+  let aliveCount = 0;
   const ptr = sim.agents_ptr() >>> 2;
   const len = sim.agents_len();
   for (let i = ptr; i < ptr + len; i += 4) {
     const teamId = mem[i+2] | 0;
     const health = mem[i+3];
-    if (health > 0) counts[teamId]++;
+    if (health > 0) {
+      counts[teamId]++;
+      sumHealth += health;
+      aliveCount++;
+    }
   }
-  const statsElement = /** @type {HTMLElement} */ (document.getElementById('stats'));
+  // Update unit counts
+  const statsElement = document.getElementById('stats');
   statsElement.textContent =
     `Orange: ${counts[0]} | Yellow: ${counts[1]} | Green: ${counts[2]} | Blue: ${counts[3]}`;
+  // Update bullet and corpse counts
+  const bulletCount = sim.bullets_len() / 4;
+  const corpseCount = sim.corpses_len() / 4;
+  document.getElementById('bulletCount').textContent = `Bullets: ${bulletCount}`;
+  document.getElementById('corpseCount').textContent = `Corpses: ${corpseCount}`;
+  // Update average health
+  const avgHealth = aliveCount > 0 ? (sumHealth / aliveCount).toFixed(1) : '0.0';
+  document.getElementById('healthStats').textContent = `Avg Health: ${avgHealth}`;
+  // Update command counts
+  document.getElementById('thrustCount').textContent = `Thrust: ${sim.thrust_count()}`;
+  document.getElementById('fireCount').textContent = `Fire: ${sim.fire_count()}`;
+  document.getElementById('idleCount').textContent = `Idle: ${sim.idle_count()}`;
 }
 
 function draw() {
@@ -68,6 +94,16 @@ function draw() {
 function loop() {
   if (!paused) {
     sim.step(); draw(); updateStats();
+    // update diagnostics
+    tick++;
+    tpsCounter++;
+    const now = performance.now();
+    if (now - lastTpsUpdate >= 1000) {
+      tpsElem.textContent = `TPS: ${tpsCounter}`;
+      tpsCounter = 0;
+      lastTpsUpdate = now;
+    }
+    tickElem.textContent = `Tick: ${tick}`;
   }
   requestAnimationFrame(loop);
 }
