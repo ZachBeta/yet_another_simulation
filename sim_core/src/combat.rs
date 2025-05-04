@@ -49,6 +49,13 @@ pub fn run(sim: &mut Simulation) {
                                 rem
                             };
                             sim.agents_data[tb + IDX_HEALTH] -= spill;
+                            // If this shot killed the target, spawn a wreck
+                            if sim.agents_data[tb + IDX_HEALTH] <= 0.0 {
+                                let px = sim.agents_data[tb + IDX_X];
+                                let py = sim.agents_data[tb + IDX_Y];
+                                let init = sim.config.health_max * sim.config.loot_init_ratio;
+                                sim.wrecks_data.extend(&[px, py, init]);
+                            }
                             sim.fire_count += 1;
                         }
                     }

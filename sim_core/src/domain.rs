@@ -47,7 +47,7 @@ pub enum Weapon {
 pub enum Action {
     Thrust(Vec2),           // acceleration vector
     Fire  { weapon: Weapon },
-    Pickup,                 // scavenge from corpse
+    Loot,                   // scavenge from corpse
     Idle,                   // no-op
 }
 
@@ -64,6 +64,10 @@ pub struct WorldView<'a> {
     pub healths: &'a [f32],
     /// Shield levels for all agents
     pub shields: &'a [f32],
+    /// Positions of wrecks available for looting
+    pub wreck_positions: &'a [Vec2],
+    /// Remaining loot pool in each wreck
+    pub wreck_pools: &'a [f32],
 }
 
 /// Agent decision interface.
@@ -89,6 +93,6 @@ mod tests {
         let _ = Action::Idle;
         let _ = Action::Fire { weapon: Weapon::Laser { damage: 1.0, range: 5.0 } };
         let _ = Action::Thrust(Vec2 { x: 1.0, y: 0.0 });
-        let _ = Action::Pickup;
+        let _ = Action::Loot;
     }
 }

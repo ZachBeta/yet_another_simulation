@@ -78,11 +78,11 @@ function updateStats() {
   const statsElement = document.getElementById('stats');
   statsElement.textContent =
     `Orange: ${counts[0]} | Yellow: ${counts[1]} | Green: ${counts[2]} | Blue: ${counts[3]}`;
-  // Update bullet and corpse counts
+  // Update bullet and wreck counts
   const bulletCount = sim.bullets_len() / 4;
-  const corpseCount = sim.corpses_len() / 4;
+  const wreckCount = sim.wrecks_len() / 3;
   document.getElementById('bulletCount').textContent = `Bullets: ${bulletCount}`;
-  document.getElementById('corpseCount').textContent = `Corpses: ${corpseCount}`;
+  document.getElementById('wreckCount').textContent = `Wrecks: ${wreckCount}`;
   // Update average health
   const avgHealth = aliveCount > 0 ? (sumHealth / aliveCount).toFixed(1) : '0.0';
   document.getElementById('healthStats').textContent = `Avg Health: ${avgHealth}`;
@@ -90,6 +90,7 @@ function updateStats() {
   document.getElementById('thrustCount').textContent = `Thrust: ${sim.thrust_count()}`;
   document.getElementById('fireCount').textContent = `Fire: ${sim.fire_count()}`;
   document.getElementById('idleCount').textContent = `Idle: ${sim.idle_count()}`;
+  document.getElementById('lootCount').textContent = `Loot: ${sim.loot_count()}`;
 }
 
 function draw() {
@@ -137,6 +138,20 @@ function draw() {
       ctx.lineTo(x2, y2);
     }
     ctx.stroke();
+  }
+  // Draw wrecks
+  const wptr = sim.wrecks_ptr() >>> 2;
+  const wlen = sim.wrecks_len();
+  const initPool = sim.health_max() * sim.loot_init_ratio();
+  for (let j = wptr; j < wptr + wlen; j += 3) {
+    const wx = mem[j], wy = mem[j+1], pool = mem[j+2];
+    const frac = pool / initPool;
+    ctx.fillStyle = 'rgba(128,128,128,0.6)';
+    ctx.beginPath();
+    ctx.arc(wx, wy, 3, 0, 2*Math.PI);
+    ctx.fill();
+    drawRing(ctx, wx, wy, healthRadius + 2, 2, frac,
+             'rgba(128,128,128,0.2)', 'rgba(192,192,192,0.8)');
   }
 }
 

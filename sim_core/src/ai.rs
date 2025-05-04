@@ -1,92 +1,155 @@
 use crate::config::Config;
 use crate::domain::{WorldView, Agent, Action, Vec2, Weapon};
 
-/// A simple rule-based agent using separation and attack logic.
+// AI state machine states
+enum AgentState {
+    Idle,
+    Engaging { target: usize },
+    Retreating,
+    Looting { wreck: usize },
+}
+
 pub struct NaiveAgent {
-    /// Movement speed per tick
     pub speed: f32,
-    /// Damage amount for laser
     pub attack_damage: f32,
-    /// Whether currently retreating
-    pub retreating: bool,
+    pub state: AgentState,
 }
 
 impl NaiveAgent {
-    /// Create a new NaiveAgent
     pub fn new(speed: f32, attack_damage: f32) -> Self {
-        NaiveAgent { speed, attack_damage, retreating: false }
+        NaiveAgent { speed, attack_damage, state: AgentState::Idle }
+    }
+
+    /// Update AI state based on view & config
+    fn update_state(&mut self, view: &WorldView, cfg: &Config) {
+        let flee_th = cfg.health_max * cfg.health_flee_ratio;
+        let engage_th = cfg.health_max * cfg.health_engage_ratio;
+
+        // find nearest enemy
+        let mut nearest_enemy: Option<usize> = None;
+        let mut best_e_d2 = f32::MAX;
+        for (j, &pos) in view.positions.iter().enumerate() {
+            if j != view.self_idx && view.healths[j] > 0.0 && view.teams[j] != view.self_team {
+                let dx = pos.x - view.self_pos.x;
+                let dy = pos.y - view.self_pos.y;
+                let d2 = dx*dx + dy*dy;
+                if d2 < best_e_d2 {
+                    best_e_d2 = d2;
+                    nearest_enemy = Some(j);
+                }
+            }
+        }
+
+        // find nearest wreck
+        let mut nearest_wreck: Option<usize> = None;
+        let mut best_w_d2 = f32::MAX;
+        for (wi, &pos) in view.wreck_positions.iter().enumerate() {
+            if view.wreck_pools[wi] > 0.0 {
+                let dx = pos.x - view.self_pos.x;
+                let dy = pos.y - view.self_pos.y;
+                let d2 = dx*dx + dy*dy;
+                if d2 < best_w_d2 {
+                    best_w_d2 = d2;
+                    nearest_wreck = Some(wi);
+                }
+            }
+        }
+
+        self.state = if view.self_health <= flee_th {
+            if let Some(w) = nearest_wreck { AgentState::Looting { wreck: w } }
+            else { AgentState::Retreating }
+        } else if view.self_health >= engage_th {
+            if let Some(e) = nearest_enemy { AgentState::Engaging { target: e } }
+            else { AgentState::Idle }
+        } else {
+            if let Some(e) = nearest_enemy { AgentState::Engaging { target: e } }
+            else { AgentState::Idle }
+        };
+    }
+
+    /// Decide on an Action based on current state and view
+    fn decide_action(&mut self, view: &WorldView, cfg: &Config) -> Action {
+        match &self.state {
+            AgentState::Idle => Action::Idle,
+
+            AgentState::Engaging { target } => {
+                let pos = view.positions[*target];
+                let dx = pos.x - view.self_pos.x;
+                let dy = pos.y - view.self_pos.y;
+                let dist2 = dx*dx + dy*dy;
+                let dist = dist2.sqrt();
+                if dist <= cfg.attack_range {
+                    Action::Fire { weapon: Weapon::Laser { damage: self.attack_damage, range: cfg.attack_range } }
+                } else {
+                    // separation vector
+                    let mut sep_dx = 0.0;
+                    let mut sep_dy = 0.0;
+                    for (j, &p) in view.positions.iter().enumerate() {
+                        if j != view.self_idx && view.healths[j] > 0.0 {
+                            let dx0 = view.self_pos.x - p.x;
+                            let dy0 = view.self_pos.y - p.y;
+                            let d2 = dx0*dx0 + dy0*dy0;
+                            if d2 < cfg.sep_range * cfg.sep_range && d2 > 0.0 {
+                                let d = d2.sqrt();
+                                sep_dx += dx0 / d;
+                                sep_dy += dy0 / d;
+                            }
+                        }
+                    }
+                    let mut vx = dx / dist * self.speed;
+                    let mut vy = dy / dist * self.speed;
+                    vx += sep_dx * cfg.sep_strength;
+                    vy += sep_dy * cfg.sep_strength;
+                    Action::Thrust(Vec2 { x: vx, y: vy })
+                }
+            }
+
+            AgentState::Retreating => {
+                // flee from nearest enemy
+                if let Some((j, _)) = view.positions.iter().enumerate()
+                    .filter(|(j,_)| *j != view.self_idx && view.healths[*j] > 0.0 && view.teams[*j] != view.self_team)
+                    .map(|(j,p)| {
+                        let dx = view.self_pos.x - p.x;
+                        let dy = view.self_pos.y - p.y;
+                        let d2 = dx*dx + dy*dy;
+                        (j, d2)
+                    })
+                    .min_by(|a,b| a.1.partial_cmp(&b.1).unwrap()) {
+                    let p = view.positions[j];
+                    let dx = view.self_pos.x - p.x;
+                    let dy = view.self_pos.y - p.y;
+                    let dist = (dx*dx + dy*dy).sqrt().max(1e-6);
+                    let vx = dx / dist * self.speed;
+                    let vy = dy / dist * self.speed;
+                    Action::Thrust(Vec2 { x: vx, y: vy })
+                } else {
+                    Action::Idle
+                }
+            }
+
+            AgentState::Looting { wreck } => {
+                let pos = view.wreck_positions[*wreck];
+                let dx = pos.x - view.self_pos.x;
+                let dy = pos.y - view.self_pos.y;
+                let d2 = dx*dx + dy*dy;
+                if d2 <= cfg.loot_range * cfg.loot_range && view.wreck_pools[*wreck] > 0.0 {
+                    Action::Loot
+                } else {
+                    let dist = d2.sqrt().max(1e-6);
+                    let vx = dx / dist * self.speed;
+                    let vy = dy / dist * self.speed;
+                    Action::Thrust(Vec2 { x: vx, y: vy })
+                }
+            }
+        }
     }
 }
 
 impl Agent for NaiveAgent {
     fn think(&mut self, view: &WorldView) -> Action {
         let cfg = Config::default();
-        let count = view.positions.len();
-        // find nearest enemy
-        let mut target_idx = None;
-        let mut dmin = f32::MAX;
-        for j in 0..count {
-            if j != view.self_idx && view.healths[j] > 0.0 && view.teams[j] != view.self_team {
-                let dx = view.positions[j].x - view.self_pos.x;
-                let dy = view.positions[j].y - view.self_pos.y;
-                let dist2 = dx * dx + dy * dy;
-                if dist2 < dmin {
-                    dmin = dist2;
-                    target_idx = Some(j);
-                }
-            }
-        }
-        // separation vector
-        let mut sep_dx = 0.0;
-        let mut sep_dy = 0.0;
-        for j in 0..count {
-            if j != view.self_idx && view.healths[j] > 0.0 {
-                let dx = view.self_pos.x - view.positions[j].x;
-                let dy = view.self_pos.y - view.positions[j].y;
-                let dist2 = dx * dx + dy * dy;
-                if dist2 < cfg.sep_range * cfg.sep_range && dist2 > 0.0 {
-                    let d = dist2.sqrt();
-                    sep_dx += dx / d;
-                    sep_dy += dy / d;
-                }
-            }
-        }
-        // combined health+shield thresholds
-        let combined = view.self_health + view.self_shield;
-        let max_total = 100.0 + cfg.max_shield;
-        let flee_th = max_total * 0.2;
-        let engage_th = max_total * 0.5;
-        // hysteresis: set retreating flag
-        if combined < flee_th { self.retreating = true; }
-        else if combined > engage_th { self.retreating = false; }
-        // if retreating, flee
-        if self.retreating {
-            if let Some(ti) = target_idx {
-                let dx = view.self_pos.x - view.positions[ti].x;
-                let dy = view.self_pos.y - view.positions[ti].y;
-                let dist = (dx*dx + dy*dy).sqrt().max(1e-6);
-                let vx = dx / dist * self.speed;
-                let vy = dy / dist * self.speed;
-                return Action::Thrust(Vec2 { x: vx, y: vy });
-            }
-            return Action::Idle;
-        }
-        // decide action
-        if let Some(ti) = target_idx {
-            let dist = dmin.sqrt();
-            if dist <= cfg.attack_range {
-                Action::Fire { weapon: Weapon::Laser { damage: self.attack_damage, range: cfg.attack_range } }
-            } else {
-                // move toward target with separation
-                let mut vx = (view.positions[ti].x - view.self_pos.x) / dist * self.speed;
-                let mut vy = (view.positions[ti].y - view.self_pos.y) / dist * self.speed;
-                vx += sep_dx * cfg.sep_strength;
-                vy += sep_dy * cfg.sep_strength;
-                Action::Thrust(Vec2 { x: vx, y: vy })
-            }
-        } else {
-            Action::Idle
-        }
+        self.update_state(view, &cfg);
+        self.decide_action(view, &cfg)
     }
 }
 
@@ -114,6 +177,8 @@ mod tests {
             teams:       &teams,
             healths:     &healths,
             shields:     &shields,
+            wreck_positions: &[],
+            wreck_pools:     &[],
         };
         assert!(matches!(agent.think(&view), Action::Idle));
     }
@@ -135,6 +200,8 @@ mod tests {
             teams:       &teams,
             healths:     &healths,
             shields:     &shields,
+            wreck_positions: &[],
+            wreck_pools:     &[],
         };
         match agent.think(&view) {
             Action::Fire { weapon } => if let Weapon::Laser { damage, range } = weapon {
@@ -164,6 +231,8 @@ mod tests {
             teams:       &teams,
             healths:     &healths,
             shields:     &shields,
+            wreck_positions: &[],
+            wreck_pools:     &[],
         };
         if let Action::Thrust(v) = agent.think(&view) {
             assert!(v.x > 0.0);
@@ -189,6 +258,8 @@ mod tests {
             teams:       &teams,
             healths:     &healths,
             shields:     &shields,
+            wreck_positions: &[],
+            wreck_pools:     &[],
         };
         if let Action::Thrust(v) = agent.think(&view) {
             assert!(v.x < 0.0);

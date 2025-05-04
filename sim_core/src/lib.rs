@@ -27,6 +27,12 @@ const IDX_HEALTH: usize = 3;
 const IDX_SHIELD: usize = 4;
 /// Last tick when this agent was hit
 const IDX_LAST_HIT: usize = 5;
+/// Number of floats per wreck record in the flat buffer
+const WRECK_STRIDE: usize = 3;
+/// Offsets into a wreck record
+const IDX_WRECK_X: usize    = 0;
+const IDX_WRECK_Y: usize    = 1;
+const IDX_WRECK_POOL: usize = 2;
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 pub struct Simulation {
@@ -34,11 +40,12 @@ pub struct Simulation {
     height: u32,
     agents_data: Vec<f32>,
     bullets_data: Vec<f32>,
-    corpses_data: Vec<f32>,
+    wrecks_data: Vec<f32>,
     commands: HashMap<usize, Action>,
     thrust_count: u32,
     fire_count: u32,
     idle_count: u32,
+    loot_count: u32,
     /// Current tick number
     tick_count: u32,
     /// hitscan segments: [x1,y1,x2,y2,...]
@@ -59,11 +66,12 @@ impl Simulation {
             height,
             agents_data: Vec::with_capacity(((orange + yellow + green + blue) * AGENT_STRIDE as u32) as usize),
             bullets_data: Vec::new(),
-            corpses_data: Vec::new(),
+            wrecks_data: Vec::new(),
             commands: HashMap::new(),
             thrust_count: 0,
             fire_count: 0,
             idle_count: 0,
+            loot_count: 0,
             tick_count: 0,
             hits_data: Vec::new(),
             config: Config::default(),
@@ -108,13 +116,14 @@ impl Simulation {
         self.thrust_count = 0;
         self.fire_count = 0;
         self.idle_count = 0;
+        self.loot_count = 0;
         // clear previous hits
         self.hits_data.clear();
         // advance global tick
         self.tick_count += 1;
 
         // Phase 2: Agent Decision
-        let (positions, teams, healths, shields) = self.build_global_view();
+        let (positions, teams, healths, shields, wreck_positions, wreck_pools) = self.build_global_view();
         for (idx, agent) in self.agents_impl.iter_mut().enumerate() {
             // Skip decision for dead agents
             if healths[idx] <= 0.0 {
@@ -126,13 +135,21 @@ impl Simulation {
                 self_team:   teams[idx],
                 self_health: healths[idx],
                 self_shield: shields[idx],
-                positions:   &positions,
-                teams:       &teams,
-                healths:     &healths,
-                shields:     &shields,
+                positions:       &positions,
+                teams:           &teams,
+                healths:         &healths,
+                shields:         &shields,
+                wreck_positions: &wreck_positions,
+                wreck_pools:     &wreck_pools,
             };
             let action = agent.think(&view);
-            self.commands.insert(idx, action);
+            self.commands.insert(idx, action.clone());
+            match action {
+                Action::Thrust(_) => self.thrust_count += 1,
+                Action::Idle => self.idle_count += 1,
+                Action::Loot => self.loot_count += 1,
+                _ => {},
+            }
         }
 
         // Phase 3: Movement System
@@ -143,6 +160,42 @@ impl Simulation {
 
         // Phase 5: Bullet System
         bullet::run(self);
+
+        // Phase 6: Loot System
+        for (&aid, action) in &self.commands {
+            if let Action::Loot = action {
+                let px = self.agents_data[aid * AGENT_STRIDE + IDX_X];
+                let py = self.agents_data[aid * AGENT_STRIDE + IDX_Y];
+                let range2 = self.config.loot_range * self.config.loot_range;
+                let mut best = None;
+                let mut best_d2 = f32::MAX;
+                let wd = &mut self.wrecks_data;
+                let mut i = 0;
+                while i + WRECK_STRIDE <= wd.len() {
+                    let wx = wd[i + IDX_WRECK_X];
+                    let wy = wd[i + IDX_WRECK_Y];
+                    let dx = wx - px;
+                    let dy = wy - py;
+                    let d2 = dx * dx + dy * dy;
+                    if d2 <= range2 && d2 < best_d2 {
+                        best_d2 = d2;
+                        best = Some(i);
+                    }
+                    i += WRECK_STRIDE;
+                }
+                if let Some(idx0) = best {
+                    let pool = &mut wd[idx0 + IDX_WRECK_POOL];
+                    let gain = (*pool * self.config.loot_fraction) + self.config.loot_fixed;
+                    let actual = gain.min(*pool);
+                    *pool -= actual;
+                    let hslot = aid * AGENT_STRIDE + IDX_HEALTH;
+                    self.agents_data[hslot] = (self.agents_data[hslot] + actual).min(self.config.health_max);
+                    if *pool <= 0.0 {
+                        wd.drain(idx0..idx0 + WRECK_STRIDE);
+                    }
+                }
+            }
+        }
 
         // Shield regeneration pass: regen if no hit recently
         let agent_count = self.agents_data.len() / AGENT_STRIDE;
@@ -166,8 +219,8 @@ impl Simulation {
     pub fn bullets_ptr(&self) -> *const f32 { self.bullets_data.as_ptr() }
     pub fn bullets_len(&self) -> usize { self.bullets_data.len() }
 
-    pub fn corpses_ptr(&self) -> *const f32 { self.corpses_data.as_ptr() }
-    pub fn corpses_len(&self) -> usize { self.corpses_data.len() }
+    pub fn wrecks_ptr(&self) -> *const f32 { self.wrecks_data.as_ptr() }
+    pub fn wrecks_len(&self) -> usize { self.wrecks_data.len() }
 
     /// Pointer to hits_data array
     pub fn hits_ptr(&self) -> *const f32 { self.hits_data.as_ptr() }
@@ -188,6 +241,8 @@ impl Simulation {
     pub fn fire_count(&self) -> u32 { self.fire_count }
     /// Number of Idle commands executed this tick
     pub fn idle_count(&self) -> u32 { self.idle_count }
+    /// Number of Loot commands executed this tick
+    pub fn loot_count(&self) -> u32 { self.loot_count }
     /// Separation (force field) radius for agents
     pub fn sep_range(&self) -> f32 { self.config.sep_range }
     /// Attack (targeting) radius for agents
@@ -198,6 +253,16 @@ impl Simulation {
     pub fn shield_regen_delay(&self) -> u32 { self.config.shield_regen_delay }
     /// Shield points recovered per tick
     pub fn shield_regen_rate(&self) -> f32 { self.config.shield_regen_rate }
+    /// Maximum health capacity
+    pub fn health_max(&self) -> f32 { self.config.health_max }
+    /// Maximum distance to loot a wreck
+    pub fn loot_range(&self) -> f32 { self.config.loot_range }
+    /// Flat HP gained per tick when looting
+    pub fn loot_fixed(&self) -> f32 { self.config.loot_fixed }
+    /// Fraction of remaining pool gained per tick
+    pub fn loot_fraction(&self) -> f32 { self.config.loot_fraction }
+    /// Initial pool fraction of max health in new wrecks
+    pub fn loot_init_ratio(&self) -> f32 { self.config.loot_init_ratio }
 }
 
 impl Simulation {
@@ -212,7 +277,7 @@ impl Simulation {
     }
 
     /// Flatten agents_data buffers into read-only vectors (positions, teams, healths, shields)
-    fn build_global_view(&self) -> (Vec<Vec2>, Vec<usize>, Vec<f32>, Vec<f32>) {
+    fn build_global_view(&self) -> (Vec<Vec2>, Vec<usize>, Vec<f32>, Vec<f32>, Vec<Vec2>, Vec<f32>) {
         let count = self.agents_data.len() / AGENT_STRIDE;
         let mut positions = Vec::with_capacity(count);
         let mut teams = Vec::with_capacity(count);
@@ -225,7 +290,19 @@ impl Simulation {
             healths.push(self.agents_data[base + IDX_HEALTH]);
             shields.push(self.agents_data[base + IDX_SHIELD]);
         }
-        (positions, teams, healths, shields)
+        // build wreck view
+        let wcount = self.wrecks_data.len() / WRECK_STRIDE;
+        let mut wreck_positions = Vec::with_capacity(wcount);
+        let mut wreck_pools = Vec::with_capacity(wcount);
+        for wi in 0..wcount {
+            let base = wi * WRECK_STRIDE;
+            let wx = self.wrecks_data[base + IDX_WRECK_X];
+            let wy = self.wrecks_data[base + IDX_WRECK_Y];
+            let wp = self.wrecks_data[base + IDX_WRECK_POOL];
+            wreck_positions.push(Vec2 { x: wx, y: wy });
+            wreck_pools.push(wp);
+        }
+        (positions, teams, healths, shields, wreck_positions, wreck_pools)
     }
 }
 
@@ -243,8 +320,8 @@ mod tests {
     fn last_in_wins() {
         let mut sim = Simulation::new(10, 10, 0, 0, 0, 0);
         sim.push_command(0, Action::Idle);
-        sim.push_command(0, Action::Pickup);
-        assert!(matches!(sim.commands.get(&0), Some(Action::Pickup)));
+        sim.push_command(0, Action::Loot);
+        assert!(matches!(sim.commands.get(&0), Some(Action::Loot)));
     }
 
     /// Shield should regenerate once delay has passed
