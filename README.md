@@ -37,8 +37,12 @@ Open [http://localhost:8000](http://localhost:8000) in your browser.
 
 ## Screenshots
 
-![Screenshot 2025-05-03 at 11.42.18](./Screenshot%202025-05-03%20at%2011.42.18.png)
-![Screenshot 2025-05-03 at 11.42.21](./Screenshot%202025-05-03%20at%2011.42.21.png)
-![Screenshot 2025-05-03 at 11.42.24](./Screenshot%202025-05-03%20at%2011.42.24.png)
-![Screenshot 2025-05-03 at 11.42.26](./Screenshot%202025-05-03%20at%2011.42.26.png)
-![Screenshot 2025-05-03 at 11.42.28](./Screenshot%202025-05-03%20at%2011.42.28.png)
+![Screenshot 2025-05-04 12:35:25](./Screenshot%202025-05-04%20at%2012.35.25.png)
+
+![Screenshot 2025-05-04 12:35:33](./Screenshot%202025-05-04%20at%2012.35.33.png)
+
+![Screenshot 2025-05-04 12:35:56](./Screenshot%202025-05-04%20at%2012.35.56.png)
+
+![Screenshot 2025-05-04 12:36:24](./Screenshot%202025-05-04%20at%2012.36.24.png)
+
+![Screenshot 2025-05-04 12:36:47](./Screenshot%202025-05-04%20at%2012.36.47.png)
