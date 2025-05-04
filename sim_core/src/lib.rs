@@ -24,7 +24,7 @@ const IDX_Y: usize = 1;
 const IDX_TEAM: usize = 2;
 const IDX_HEALTH: usize = 3;
 
-#[wasm_bindgen]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 pub struct Simulation {
     width: u32,
     height: u32,
@@ -43,9 +43,9 @@ pub struct Simulation {
     agents_impl: Vec<Box<dyn Agent>>,
 }
 
-#[wasm_bindgen]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 impl Simulation {
-    #[wasm_bindgen(constructor)]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen(constructor))]
     pub fn new(width: u32, height: u32, orange: u32, yellow: u32, green: u32, blue: u32) -> Simulation {
         // init empty state
         let mut sim = Simulation {
@@ -103,6 +103,10 @@ impl Simulation {
         // Phase 2: Agent Decision
         let (positions, teams, healths) = self.build_global_view();
         for (idx, agent) in self.agents_impl.iter_mut().enumerate() {
+            // Skip decision for dead agents
+            if healths[idx] <= 0.0 {
+                continue;
+            }
             let view = WorldView {
                 self_idx:    idx,
                 self_pos:    positions[idx],
@@ -150,7 +154,7 @@ impl Simulation {
     }
 }
 
-#[wasm_bindgen]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 impl Simulation {
     /// Number of Thrust commands executed this tick
     pub fn thrust_count(&self) -> u32 { self.thrust_count }
@@ -158,6 +162,10 @@ impl Simulation {
     pub fn fire_count(&self) -> u32 { self.fire_count }
     /// Number of Idle commands executed this tick
     pub fn idle_count(&self) -> u32 { self.idle_count }
+    /// Separation (force field) radius for agents
+    pub fn sep_range(&self) -> f32 { self.config.sep_range }
+    /// Attack (targeting) radius for agents
+    pub fn attack_range(&self) -> f32 { self.config.attack_range }
 }
 
 impl Simulation {
@@ -203,5 +211,54 @@ mod tests {
         sim.push_command(0, Action::Idle);
         sim.push_command(0, Action::Pickup);
         assert!(matches!(sim.commands.get(&0), Some(Action::Pickup)));
+    }
+}
+
+#[cfg(test)]
+mod integration_tests {
+    use super::*;
+    use crate::domain::{Action, Weapon};
+    use crate::{AGENT_STRIDE, IDX_HEALTH};
+
+    #[test]
+    fn integration_fire_enemy() {
+        let mut sim = Simulation::new(100, 100, 0, 0, 0, 0);
+        sim.agents_data.clear();
+        sim.agents_data.extend(&[0.0, 0.0, 0.0, 100.0]);
+        sim.agents_data.extend(&[3.0, 4.0, 1.0, 100.0]);
+        sim.commands.clear();
+        sim.commands.insert(0, Action::Fire { weapon: Weapon::Laser { damage: 5.0, range: 10.0 } });
+        sim.step();
+        assert_eq!(sim.fire_count, 1);
+        let target_health = sim.agents_data[1 * AGENT_STRIDE + IDX_HEALTH];
+        assert_eq!(target_health, 95.0);
+        assert_eq!(sim.hits_data.len(), 4);
+    }
+
+    #[test]
+    fn integration_no_self_shot() {
+        let mut sim = Simulation::new(100, 100, 0, 0, 0, 0);
+        sim.agents_data.clear();
+        sim.agents_data.extend(&[0.0, 0.0, 0.0, 100.0]);
+        sim.commands.clear();
+        sim.commands.insert(0, Action::Fire { weapon: Weapon::Laser { damage: 5.0, range: 10.0 } });
+        sim.step();
+        assert_eq!(sim.fire_count, 0);
+        assert_eq!(sim.agents_data[IDX_HEALTH], 100.0);
+        assert!(sim.hits_data.is_empty());
+    }
+
+    #[test]
+    fn integration_no_hit_out_of_range() {
+        let mut sim = Simulation::new(100, 100, 0, 0, 0, 0);
+        sim.agents_data.clear();
+        sim.agents_data.extend(&[0.0, 0.0, 0.0, 100.0]);
+        sim.agents_data.extend(&[100.0, 100.0, 1.0, 100.0]);
+        sim.commands.clear();
+        sim.commands.insert(0, Action::Fire { weapon: Weapon::Laser { damage: 5.0, range: 10.0 } });
+        sim.step();
+        assert_eq!(sim.fire_count, 0);
+        assert_eq!(sim.agents_data[1 * AGENT_STRIDE + IDX_HEALTH], 100.0);
+        assert!(sim.hits_data.is_empty());
     }
 }

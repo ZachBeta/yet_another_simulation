@@ -57,3 +57,60 @@ pub fn run(sim: &mut Simulation) {
         }
     }
 }
+
+// Unit tests for combat phase
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::{Action, Weapon};
+    use crate::Simulation;
+    use crate::{AGENT_STRIDE, IDX_X, IDX_Y, IDX_TEAM, IDX_HEALTH};
+
+    /// Helper to create a simulation with custom agents
+    fn make_sim(data: &[(f32, f32, usize, f32)]) -> Simulation {
+        let mut sim = Simulation::new(100, 100, 0, 0, 0, 0);
+        sim.agents_data.clear();
+        for &(x, y, team, health) in data {
+            sim.agents_data.push(x);
+            sim.agents_data.push(y);
+            sim.agents_data.push(team as f32);
+            sim.agents_data.push(health);
+        }
+        sim.commands.clear();
+        sim.fire_count = 0;
+        sim.hits_data.clear();
+        sim
+    }
+
+    #[test]
+    fn no_self_damage() {
+        let mut sim = make_sim(&[(0.0, 0.0, 0, 100.0)]);
+        sim.commands.insert(0, Action::Fire { weapon: Weapon::Laser { damage: 5.0, range: 10.0 } });
+        run(&mut sim);
+        assert_eq!(sim.agents_data[IDX_HEALTH], 100.0);
+        assert_eq!(sim.fire_count, 0);
+        assert!(sim.hits_data.is_empty());
+    }
+
+    #[test]
+    fn hit_enemy_in_range() {
+        let mut sim = make_sim(&[(0.0, 0.0, 0, 100.0), (3.0, 4.0, 1, 100.0)]);
+        sim.commands.insert(0, Action::Fire { weapon: Weapon::Laser { damage: 5.0, range: 10.0 } });
+        run(&mut sim);
+        let base = 1 * AGENT_STRIDE;
+        assert_eq!(sim.agents_data[base + IDX_HEALTH], 95.0);
+        assert_eq!(sim.fire_count, 1);
+        assert_eq!(sim.hits_data.len(), 4);
+    }
+
+    #[test]
+    fn no_hit_out_of_range() {
+        let mut sim = make_sim(&[(0.0, 0.0, 0, 100.0), (100.0, 100.0, 1, 100.0)]);
+        sim.commands.insert(0, Action::Fire { weapon: Weapon::Laser { damage: 5.0, range: 10.0 } });
+        run(&mut sim);
+        let base = 1 * AGENT_STRIDE;
+        assert_eq!(sim.agents_data[base + IDX_HEALTH], 100.0);
+        assert_eq!(sim.fire_count, 0);
+        assert!(sim.hits_data.is_empty());
+    }
+}

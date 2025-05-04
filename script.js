@@ -88,19 +88,17 @@ function draw() {
     ctx.beginPath();
     ctx.arc(x, y, 4, 0, 2*Math.PI);
     ctx.fill();
-    // overlay ranges for orange (team 0)
-    if (teamId === 0) {
-      // laser range fill (expanded)
-      ctx.fillStyle = 'rgba(255,165,0,0.05)';
-      ctx.beginPath();
-      ctx.arc(x, y, 50, 0, 2*Math.PI);
-      ctx.fill();
-      // separation zone
-      ctx.strokeStyle = 'rgba(255,165,0,0.15)';
-      ctx.beginPath();
-      ctx.arc(x, y, 10, 0, 2*Math.PI);
-      ctx.stroke();
-    }
+    // overlay ranges for all ships
+    const attackR = sim.attack_range();
+    const sepR = sim.sep_range();
+    ctx.fillStyle = hexToRgba(TEAM_COLORS[teamId], 0.05);
+    ctx.beginPath();
+    ctx.arc(x, y, attackR, 0, 2*Math.PI);
+    ctx.fill();
+    ctx.strokeStyle = hexToRgba(TEAM_COLORS[teamId], 0.15);
+    ctx.beginPath();
+    ctx.arc(x, y, sepR, 0, 2*Math.PI);
+    ctx.stroke();
     // draw hitscan vectors
     const hitsPtr = sim.hits_ptr() >>> 2;
     const hitsLen = sim.hits_len();
