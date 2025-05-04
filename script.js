@@ -44,13 +44,28 @@ function hexToRgba(hex, a) {
   return `rgba(${r},${g},${b},${a})`;
 }
 
+// Draw a ring with background and foreground arcs
+function drawRing(ctx, x, y, radius, thickness, fraction, bgColor, fgColor) {
+  ctx.lineWidth = thickness;
+  // background ring (missing portion)
+  ctx.strokeStyle = bgColor;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, 2 * Math.PI);
+  ctx.stroke();
+  // foreground ring (remaining portion), starts at top
+  ctx.strokeStyle = fgColor;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, -Math.PI/2, -Math.PI/2 + fraction * 2 * Math.PI);
+  ctx.stroke();
+}
+
 function updateStats() {
   const counts = [0,0,0,0];
   let sumHealth = 0;
   let aliveCount = 0;
   const ptr = sim.agents_ptr() >>> 2;
   const len = sim.agents_len();
-  for (let i = ptr; i < ptr + len; i += 4) {
+  for (let i = ptr; i < ptr + len; i += 6) {
     const teamId = mem[i+2] | 0;
     const health = mem[i+3];
     if (health > 0) {
@@ -79,15 +94,27 @@ function updateStats() {
 
 function draw() {
   ctx.clearRect(0,0,canvas.width,canvas.height);
+  // HP & Shield bar parameters
+  const t = 3, g = 3, R = 4;
+  const maxHealth = 100;
+  const maxShield = sim.max_shield();
   const ptr = sim.agents_ptr() >>> 2;
   const len = sim.agents_len();
-  for (let i = ptr; i < ptr + len; i += 4) {
-    const x = mem[i], y = mem[i+1], teamId = mem[i+2]|0, health = mem[i+3];
+  // compute ring radii so they sit outside the ship hull
+  const healthRadius = R + t/2 + g;
+  const shieldRadius = healthRadius + t + g;
+  for (let i = ptr; i < ptr + len; i += 6) {
+    const x = mem[i], y = mem[i+1], teamId = mem[i+2]|0, health = mem[i+3], shield = mem[i+4];
     if (health <= 0) continue;
     ctx.fillStyle = hexToRgba(TEAM_COLORS[teamId], Math.max(health/100,0));
     ctx.beginPath();
     ctx.arc(x, y, 4, 0, 2*Math.PI);
     ctx.fill();
+    // Draw full-circle shield and health rings outside the hull
+    drawRing(ctx, x, y, shieldRadius, t, shield / maxShield,
+             'rgba(255,0,0,0.5)', '#00ffff');
+    drawRing(ctx, x, y, healthRadius, t, health / maxHealth,
+             'rgba(255,0,0,0.5)', '#ffffff');
     // overlay ranges for all ships
     const attackR = sim.attack_range();
     const sepR = sim.sep_range();

@@ -57,9 +57,13 @@ pub struct WorldView<'a> {
     pub self_pos: Vec2,
     pub self_team: usize,
     pub self_health: f32,
+    /// Current shield buffer level
+    pub self_shield: f32,
     pub positions: &'a [Vec2],
     pub teams: &'a [usize],
     pub healths: &'a [f32],
+    /// Shield levels for all agents
+    pub shields: &'a [f32],
 }
 
 /// Agent decision interface.

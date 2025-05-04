@@ -15,6 +15,12 @@ pub struct Config {
     pub max_speed: f32,
     /// View range for Fog of War (units).
     pub view_range: f32,
+    /// Ticks without damage before shield regen starts.
+    pub shield_regen_delay: u32,
+    /// Shield points recovered per tick after delay.
+    pub shield_regen_rate: f32,
+    /// Maximum shield capacity.
+    pub max_shield: f32,
 }
 
 impl Default for Config {
@@ -26,6 +32,9 @@ impl Default for Config {
             friction: 0.98,
             max_speed: 0.04,
             view_range: f32::MAX,
+            shield_regen_delay: 30,
+            shield_regen_rate: 1.0,
+            max_shield: 50.0,
         }
     }
 }

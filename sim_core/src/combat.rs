@@ -1,5 +1,5 @@
 use crate::Simulation;
-use crate::{AGENT_STRIDE, IDX_X, IDX_Y, IDX_TEAM, IDX_HEALTH};
+use crate::{AGENT_STRIDE, IDX_X, IDX_Y, IDX_TEAM, IDX_HEALTH, IDX_SHIELD, IDX_LAST_HIT};
 use crate::domain::{Action, Weapon};
 
 /// Execute the combat phase (fire resolution) outside of Simulation.
@@ -37,7 +37,18 @@ pub fn run(sim: &mut Simulation) {
                             sim.hits_data.push(sy);
                             sim.hits_data.push(sim.agents_data[tb + IDX_X]);
                             sim.hits_data.push(sim.agents_data[tb + IDX_Y]);
-                            sim.agents_data[tb + IDX_HEALTH] -= damage;
+                            // record hit time and apply damage to shield first
+                            sim.agents_data[tb + IDX_LAST_HIT] = sim.tick_count as f32;
+                            let sh = &mut sim.agents_data[tb + IDX_SHIELD];
+                            let spill = if *sh >= *damage {
+                                *sh -= *damage;
+                                0.0
+                            } else {
+                                let rem = *damage - *sh;
+                                *sh = 0.0;
+                                rem
+                            };
+                            sim.agents_data[tb + IDX_HEALTH] -= spill;
                             sim.fire_count += 1;
                         }
                     }
@@ -64,7 +75,7 @@ mod tests {
     use super::*;
     use crate::domain::{Action, Weapon};
     use crate::Simulation;
-    use crate::{AGENT_STRIDE, IDX_X, IDX_Y, IDX_TEAM, IDX_HEALTH};
+    use crate::{AGENT_STRIDE, IDX_X, IDX_Y, IDX_TEAM, IDX_HEALTH, IDX_SHIELD};
 
     /// Helper to create a simulation with custom agents
     fn make_sim(data: &[(f32, f32, usize, f32)]) -> Simulation {
@@ -75,6 +86,9 @@ mod tests {
             sim.agents_data.push(y);
             sim.agents_data.push(team as f32);
             sim.agents_data.push(health);
+            // initialize shield and last_hit_tick slots
+            sim.agents_data.push(sim.config.max_shield);
+            sim.agents_data.push(0.0);
         }
         sim.commands.clear();
         sim.fire_count = 0;
@@ -98,7 +112,10 @@ mod tests {
         sim.commands.insert(0, Action::Fire { weapon: Weapon::Laser { damage: 5.0, range: 10.0 } });
         run(&mut sim);
         let base = 1 * AGENT_STRIDE;
-        assert_eq!(sim.agents_data[base + IDX_HEALTH], 95.0);
+        // shield absorbs damage first
+        assert_eq!(sim.agents_data[base + IDX_SHIELD], sim.config.max_shield - 5.0);
+        // health remains unchanged
+        assert_eq!(sim.agents_data[base + IDX_HEALTH], 100.0);
         assert_eq!(sim.fire_count, 1);
         assert_eq!(sim.hits_data.len(), 4);
     }

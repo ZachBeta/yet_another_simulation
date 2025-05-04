@@ -17,12 +17,16 @@ mod ai;
 use crate::ai::NaiveAgent;
 
 /// Number of floats per agent in the flat buffer
-const AGENT_STRIDE: usize = 4;
+const AGENT_STRIDE: usize = 6;
 /// Offsets into an agent record
 const IDX_X: usize = 0;
 const IDX_Y: usize = 1;
 const IDX_TEAM: usize = 2;
 const IDX_HEALTH: usize = 3;
+/// Shield buffer index
+const IDX_SHIELD: usize = 4;
+/// Last tick when this agent was hit
+const IDX_LAST_HIT: usize = 5;
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 pub struct Simulation {
@@ -35,6 +39,8 @@ pub struct Simulation {
     thrust_count: u32,
     fire_count: u32,
     idle_count: u32,
+    /// Current tick number
+    tick_count: u32,
     /// hitscan segments: [x1,y1,x2,y2,...]
     hits_data: Vec<f32>,
     /// Simulation configuration parameters
@@ -58,6 +64,7 @@ impl Simulation {
             thrust_count: 0,
             fire_count: 0,
             idle_count: 0,
+            tick_count: 0,
             hits_data: Vec::new(),
             config: Config::default(),
             agents_impl: Vec::new(),
@@ -82,6 +89,9 @@ impl Simulation {
                 sim.agents_data.push(y);
                 sim.agents_data.push(team_id as f32);
                 sim.agents_data.push(100.0);
+                // initialize shield and last_hit
+                sim.agents_data.push(sim.config.max_shield);
+                sim.agents_data.push(0.0);
             }
         }
         // Register default NaiveAgent for each ship
@@ -100,8 +110,11 @@ impl Simulation {
         self.idle_count = 0;
         // clear previous hits
         self.hits_data.clear();
+        // advance global tick
+        self.tick_count += 1;
+
         // Phase 2: Agent Decision
-        let (positions, teams, healths) = self.build_global_view();
+        let (positions, teams, healths, shields) = self.build_global_view();
         for (idx, agent) in self.agents_impl.iter_mut().enumerate() {
             // Skip decision for dead agents
             if healths[idx] <= 0.0 {
@@ -112,9 +125,11 @@ impl Simulation {
                 self_pos:    positions[idx],
                 self_team:   teams[idx],
                 self_health: healths[idx],
+                self_shield: shields[idx],
                 positions:   &positions,
                 teams:       &teams,
                 healths:     &healths,
+                shields:     &shields,
             };
             let action = agent.think(&view);
             self.commands.insert(idx, action);
@@ -128,6 +143,17 @@ impl Simulation {
 
         // Phase 5: Bullet System
         bullet::run(self);
+
+        // Shield regeneration pass: regen if no hit recently
+        let agent_count = self.agents_data.len() / AGENT_STRIDE;
+        for idx in 0..agent_count {
+            let base = idx * AGENT_STRIDE;
+            let last = self.agents_data[base + IDX_LAST_HIT] as u32;
+            if self.tick_count.saturating_sub(last) >= self.config.shield_regen_delay {
+                let sh = &mut self.agents_data[base + IDX_SHIELD];
+                *sh = (*sh + self.config.shield_regen_rate).min(self.config.max_shield);
+            }
+        }
 
         // Ready for next tick
         self.commands.clear();
@@ -166,6 +192,12 @@ impl Simulation {
     pub fn sep_range(&self) -> f32 { self.config.sep_range }
     /// Attack (targeting) radius for agents
     pub fn attack_range(&self) -> f32 { self.config.attack_range }
+    /// Maximum shield capacity
+    pub fn max_shield(&self) -> f32 { self.config.max_shield }
+    /// Ticks without damage before shield regen starts
+    pub fn shield_regen_delay(&self) -> u32 { self.config.shield_regen_delay }
+    /// Shield points recovered per tick
+    pub fn shield_regen_rate(&self) -> f32 { self.config.shield_regen_rate }
 }
 
 impl Simulation {
@@ -179,19 +211,21 @@ impl Simulation {
         self.agents_impl.push(agent);
     }
 
-    /// Flatten agents_data buffers into read-only vectors
-    fn build_global_view(&self) -> (Vec<Vec2>, Vec<usize>, Vec<f32>) {
+    /// Flatten agents_data buffers into read-only vectors (positions, teams, healths, shields)
+    fn build_global_view(&self) -> (Vec<Vec2>, Vec<usize>, Vec<f32>, Vec<f32>) {
         let count = self.agents_data.len() / AGENT_STRIDE;
         let mut positions = Vec::with_capacity(count);
         let mut teams = Vec::with_capacity(count);
         let mut healths = Vec::with_capacity(count);
+        let mut shields = Vec::with_capacity(count);
         for i in 0..count {
             let base = i * AGENT_STRIDE;
             positions.push(Vec2 { x: self.agents_data[base + IDX_X], y: self.agents_data[base + IDX_Y] });
             teams.push(self.agents_data[base + IDX_TEAM] as usize);
             healths.push(self.agents_data[base + IDX_HEALTH]);
+            shields.push(self.agents_data[base + IDX_SHIELD]);
         }
-        (positions, teams, healths)
+        (positions, teams, healths, shields)
     }
 }
 
@@ -212,6 +246,44 @@ mod tests {
         sim.push_command(0, Action::Pickup);
         assert!(matches!(sim.commands.get(&0), Some(Action::Pickup)));
     }
+
+    /// Shield should regenerate once delay has passed
+    #[test]
+    fn shield_regen_after_delay() {
+        let mut sim = Simulation::new(10, 10, 0, 0, 0, 0);
+        // configure quick regen
+        sim.config.shield_regen_delay = 2;
+        sim.config.shield_regen_rate = 5.0;
+        // set single agent: pos,team,health,shield(10),last_hit(0)
+        sim.agents_data.clear();
+        sim.agents_data.extend(&[0.0, 0.0, 0.0, 100.0, 10.0, 0.0]);
+        sim.commands.clear();
+        // tick 1: no regen
+        sim.step();
+        assert_eq!(sim.agents_data[IDX_SHIELD], 10.0);
+        // tick 2: regen applies
+        sim.step();
+        assert_eq!(sim.agents_data[IDX_SHIELD], 15.0);
+        // tick 3: regen again
+        sim.step();
+        assert_eq!(sim.agents_data[IDX_SHIELD], 20.0);
+    }
+
+    /// No shield regen before delay expires
+    #[test]
+    fn shield_no_regen_before_delay() {
+        let mut sim = Simulation::new(10, 10, 0, 0, 0, 0);
+        sim.config.shield_regen_delay = 3;
+        sim.config.shield_regen_rate = 2.0;
+        sim.agents_data.clear();
+        sim.agents_data.extend(&[0.0, 0.0, 0.0, 100.0, 20.0, 0.0]);
+        sim.commands.clear();
+        // ticks 1 and 2: still before delay
+        for _ in 0..2 {
+            sim.step();
+            assert_eq!(sim.agents_data[IDX_SHIELD], 20.0);
+        }
+    }
 }
 
 #[cfg(test)]
@@ -224,14 +296,19 @@ mod integration_tests {
     fn integration_fire_enemy() {
         let mut sim = Simulation::new(100, 100, 0, 0, 0, 0);
         sim.agents_data.clear();
-        sim.agents_data.extend(&[0.0, 0.0, 0.0, 100.0]);
-        sim.agents_data.extend(&[3.0, 4.0, 1.0, 100.0]);
+        sim.agents_data.extend(&[
+            0.0, 0.0, 0.0, 100.0, sim.config.max_shield, 0.0,
+            3.0, 4.0, 1.0, 100.0, sim.config.max_shield, 0.0,
+        ]);
         sim.commands.clear();
         sim.commands.insert(0, Action::Fire { weapon: Weapon::Laser { damage: 5.0, range: 10.0 } });
         sim.step();
         assert_eq!(sim.fire_count, 1);
-        let target_health = sim.agents_data[1 * AGENT_STRIDE + IDX_HEALTH];
-        assert_eq!(target_health, 95.0);
+        let base = 1 * AGENT_STRIDE;
+        // shield absorbs damage first
+        assert_eq!(sim.agents_data[base + IDX_SHIELD], sim.config.max_shield - 5.0);
+        // health remains at full
+        assert_eq!(sim.agents_data[base + IDX_HEALTH], 100.0);
         assert_eq!(sim.hits_data.len(), 4);
     }
 
@@ -239,7 +316,10 @@ mod integration_tests {
     fn integration_no_self_shot() {
         let mut sim = Simulation::new(100, 100, 0, 0, 0, 0);
         sim.agents_data.clear();
-        sim.agents_data.extend(&[0.0, 0.0, 0.0, 100.0]);
+        sim.agents_data.extend(&[
+            0.0, 0.0, 0.0, 100.0,
+            100.0, 0.0,
+        ]);
         sim.commands.clear();
         sim.commands.insert(0, Action::Fire { weapon: Weapon::Laser { damage: 5.0, range: 10.0 } });
         sim.step();
@@ -252,8 +332,12 @@ mod integration_tests {
     fn integration_no_hit_out_of_range() {
         let mut sim = Simulation::new(100, 100, 0, 0, 0, 0);
         sim.agents_data.clear();
-        sim.agents_data.extend(&[0.0, 0.0, 0.0, 100.0]);
-        sim.agents_data.extend(&[100.0, 100.0, 1.0, 100.0]);
+        sim.agents_data.extend(&[
+            0.0, 0.0, 0.0, 100.0,
+            100.0, 0.0,
+            100.0, 100.0, 1.0, 100.0,
+            100.0, 0.0,
+        ]);
         sim.commands.clear();
         sim.commands.insert(0, Action::Fire { weapon: Weapon::Laser { damage: 5.0, range: 10.0 } });
         sim.step();
