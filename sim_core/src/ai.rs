@@ -49,6 +49,21 @@ impl Agent for NaiveAgent {
                 }
             }
         }
+        // health-based retreat
+        let retreat_threshold = 25.0;
+        if view.self_health < retreat_threshold {
+            if let Some(ti) = target_idx {
+                // flee from nearest enemy
+                let dx = view.self_pos.x - view.positions[ti].x;
+                let dy = view.self_pos.y - view.positions[ti].y;
+                let dist = (dx*dx + dy*dy).sqrt().max(1e-6);
+                let vx = dx / dist * self.speed;
+                let vy = dy / dist * self.speed;
+                return Action::Thrust(Vec2 { x: vx, y: vy });
+            } else {
+                return Action::Idle;
+            }
+        }
         // decide action
         if let Some(ti) = target_idx {
             let dist = dmin.sqrt();
@@ -136,6 +151,28 @@ mod tests {
         };
         if let Action::Thrust(v) = agent.think(&view) {
             assert!(v.x > 0.0);
+        } else {
+            panic!("Expected Thrust action");
+        }
+    }
+
+    #[test]
+    fn flee_when_health_low() {
+        let mut agent = NaiveAgent::new(1.0, 1.0);
+        let positions = vec![Vec2 { x: 0.0, y: 0.0 }, Vec2 { x: 10.0, y: 0.0 }];
+        let teams = vec![0, 1];
+        let healths = vec![20.0, 100.0];
+        let view = WorldView {
+            self_idx:    0,
+            self_pos:    positions[0],
+            self_team:   0,
+            self_health: 20.0,
+            positions:   &positions,
+            teams:       &teams,
+            healths:     &healths,
+        };
+        if let Action::Thrust(v) = agent.think(&view) {
+            assert!(v.x < 0.0);
         } else {
             panic!("Expected Thrust action");
         }
