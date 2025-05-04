@@ -30,9 +30,7 @@ impl NaiveAgent {
         let mut best_e_d2 = f32::MAX;
         for (j, &pos) in view.positions.iter().enumerate() {
             if j != view.self_idx && view.healths[j] > 0.0 && view.teams[j] != view.self_team {
-                let dx = pos.x - view.self_pos.x;
-                let dy = pos.y - view.self_pos.y;
-                let d2 = dx*dx + dy*dy;
+                let d2 = view.self_pos.torus_dist2(pos, view.world_width, view.world_height);
                 if d2 < best_e_d2 {
                     best_e_d2 = d2;
                     nearest_enemy = Some(j);
@@ -45,9 +43,7 @@ impl NaiveAgent {
         let mut best_w_d2 = f32::MAX;
         for (wi, &pos) in view.wreck_positions.iter().enumerate() {
             if view.wreck_pools[wi] > 0.0 {
-                let dx = pos.x - view.self_pos.x;
-                let dy = pos.y - view.self_pos.y;
-                let d2 = dx*dx + dy*dy;
+                let d2 = view.self_pos.torus_dist2(pos, view.world_width, view.world_height);
                 if d2 < best_w_d2 {
                     best_w_d2 = d2;
                     nearest_wreck = Some(wi);
@@ -74,9 +70,8 @@ impl NaiveAgent {
 
             AgentState::Engaging { target } => {
                 let pos = view.positions[*target];
-                let dx = pos.x - view.self_pos.x;
-                let dy = pos.y - view.self_pos.y;
-                let dist2 = dx*dx + dy*dy;
+                let delta = view.self_pos.torus_delta(pos, view.world_width, view.world_height);
+                let dist2 = delta.x * delta.x + delta.y * delta.y;
                 let dist = dist2.sqrt();
                 if dist <= cfg.attack_range {
                     Action::Fire { weapon: Weapon::Laser { damage: self.attack_damage, range: cfg.attack_range } }
@@ -86,18 +81,17 @@ impl NaiveAgent {
                     let mut sep_dy = 0.0;
                     for (j, &p) in view.positions.iter().enumerate() {
                         if j != view.self_idx && view.healths[j] > 0.0 {
-                            let dx0 = view.self_pos.x - p.x;
-                            let dy0 = view.self_pos.y - p.y;
-                            let d2 = dx0*dx0 + dy0*dy0;
+                            let sep_delta = view.self_pos.torus_delta(p, view.world_width, view.world_height);
+                            let d2 = sep_delta.x * sep_delta.x + sep_delta.y * sep_delta.y;
                             if d2 < cfg.sep_range * cfg.sep_range && d2 > 0.0 {
                                 let d = d2.sqrt();
-                                sep_dx += dx0 / d;
-                                sep_dy += dy0 / d;
+                                sep_dx += sep_delta.x / d;
+                                sep_dy += sep_delta.y / d;
                             }
                         }
                     }
-                    let mut vx = dx / dist * self.speed;
-                    let mut vy = dy / dist * self.speed;
+                    let mut vx = delta.x / dist * self.speed;
+                    let mut vy = delta.y / dist * self.speed;
                     vx += sep_dx * cfg.sep_strength;
                     vy += sep_dy * cfg.sep_strength;
                     Action::Thrust(Vec2 { x: vx, y: vy })
@@ -109,18 +103,15 @@ impl NaiveAgent {
                 if let Some((j, _)) = view.positions.iter().enumerate()
                     .filter(|(j,_)| *j != view.self_idx && view.healths[*j] > 0.0 && view.teams[*j] != view.self_team)
                     .map(|(j,p)| {
-                        let dx = view.self_pos.x - p.x;
-                        let dy = view.self_pos.y - p.y;
-                        let d2 = dx*dx + dy*dy;
+                        let d2 = view.self_pos.torus_dist2(*p, view.world_width, view.world_height);
                         (j, d2)
                     })
                     .min_by(|a,b| a.1.partial_cmp(&b.1).unwrap()) {
                     let p = view.positions[j];
-                    let dx = view.self_pos.x - p.x;
-                    let dy = view.self_pos.y - p.y;
-                    let dist = (dx*dx + dy*dy).sqrt().max(1e-6);
-                    let vx = dx / dist * self.speed;
-                    let vy = dy / dist * self.speed;
+                    let delta = view.self_pos.torus_delta(p, view.world_width, view.world_height);
+                    let dist = (delta.x * delta.x + delta.y * delta.y).sqrt().max(1e-6);
+                    let vx = -delta.x / dist * self.speed;
+                    let vy = -delta.y / dist * self.speed;
                     Action::Thrust(Vec2 { x: vx, y: vy })
                 } else {
                     Action::Idle
@@ -129,15 +120,14 @@ impl NaiveAgent {
 
             AgentState::Looting { wreck } => {
                 let pos = view.wreck_positions[*wreck];
-                let dx = pos.x - view.self_pos.x;
-                let dy = pos.y - view.self_pos.y;
-                let d2 = dx*dx + dy*dy;
+                let d2 = view.self_pos.torus_dist2(pos, view.world_width, view.world_height);
                 if d2 <= cfg.loot_range * cfg.loot_range && view.wreck_pools[*wreck] > 0.0 {
                     Action::Loot
                 } else {
                     let dist = d2.sqrt().max(1e-6);
-                    let vx = dx / dist * self.speed;
-                    let vy = dy / dist * self.speed;
+                    let delta = view.self_pos.torus_delta(pos, view.world_width, view.world_height);
+                    let vx = delta.x / dist * self.speed;
+                    let vy = delta.y / dist * self.speed;
                     Action::Thrust(Vec2 { x: vx, y: vy })
                 }
             }
@@ -179,6 +169,8 @@ mod tests {
             shields:     &shields,
             wreck_positions: &[],
             wreck_pools:     &[],
+            world_width: 1000.0,
+            world_height: 1000.0,
         };
         assert!(matches!(agent.think(&view), Action::Idle));
     }
@@ -202,6 +194,8 @@ mod tests {
             shields:     &shields,
             wreck_positions: &[],
             wreck_pools:     &[],
+            world_width: 1000.0,
+            world_height: 1000.0,
         };
         match agent.think(&view) {
             Action::Fire { weapon } => if let Weapon::Laser { damage, range } = weapon {
@@ -233,6 +227,8 @@ mod tests {
             shields:     &shields,
             wreck_positions: &[],
             wreck_pools:     &[],
+            world_width: 1000.0,
+            world_height: 1000.0,
         };
         if let Action::Thrust(v) = agent.think(&view) {
             assert!(v.x > 0.0);
@@ -260,6 +256,8 @@ mod tests {
             shields:     &shields,
             wreck_positions: &[],
             wreck_pools:     &[],
+            world_width: 1000.0,
+            world_height: 1000.0,
         };
         if let Action::Thrust(v) = agent.think(&view) {
             assert!(v.x < 0.0);

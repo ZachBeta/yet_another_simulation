@@ -1,5 +1,5 @@
-use crate::Simulation;
 use crate::{AGENT_STRIDE, IDX_X, IDX_Y, IDX_HEALTH};
+use crate::Simulation;
 use crate::domain::Vec2;
 
 /// Execute the bullet phase: move bullets, decrement TTL, detect collisions & apply damage.
@@ -13,7 +13,7 @@ pub fn run(sim: &mut Simulation) {
         let mut x = chunk[0];
         let mut y = chunk[1];
         let damage = chunk[2];
-        let mut ttl = chunk[3] - 1.0;
+        let ttl = chunk[3] - 1.0;
         if ttl <= 0.0 {
             continue;
         }
@@ -21,15 +21,15 @@ pub fn run(sim: &mut Simulation) {
         let wrapped = Vec2 { x, y }.wrap(w, h);
         x = wrapped.x;
         y = wrapped.y;
+        let ship = Vec2 { x, y };
         // collision detection radius = 1.0
         let mut hit = false;
         for idx in 0..agent_count {
             let base = idx * AGENT_STRIDE;
             let health = sim.agents_data[base + IDX_HEALTH];
             if health > 0.0 {
-                let dx = sim.agents_data[base + IDX_X] - x;
-                let dy = sim.agents_data[base + IDX_Y] - y;
-                if dx*dx + dy*dy <= 1.0 {
+                let agent_pos = Vec2 { x: sim.agents_data[base + IDX_X], y: sim.agents_data[base + IDX_Y] };
+                if ship.torus_dist2(agent_pos, w, h) <= 1.0 {
                     sim.agents_data[base + IDX_HEALTH] -= damage;
                     hit = true;
                     break;

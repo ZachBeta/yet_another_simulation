@@ -14,6 +14,7 @@ pub struct Config {
     /// Maximum speed (units per tick).
     pub max_speed: f32,
     /// View range for Fog of War (units).
+    #[allow(dead_code)]
     pub view_range: f32,
     /// Ticks without damage before shield regen starts.
     pub shield_regen_delay: u32,

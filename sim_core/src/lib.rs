@@ -1,10 +1,10 @@
 // Core simulation in Rust with WASM bindings
+#[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 use js_sys::Math;
 use std::collections::HashMap;
-
 mod domain;
-use domain::{Action, Weapon, Vec2, Agent, WorldView};
+use domain::{Action, Vec2, Agent, WorldView};
 
 mod config;
 use config::Config;
@@ -13,6 +13,7 @@ mod movement;
 mod combat;
 mod bullet;
 mod ai;
+mod loot; // Add loot module
 
 use crate::ai::NaiveAgent;
 
@@ -123,7 +124,7 @@ impl Simulation {
         self.tick_count += 1;
 
         // Phase 2: Agent Decision
-        let (positions, teams, healths, shields, wreck_positions, wreck_pools) = self.build_global_view();
+        let (positions, teams, healths, shields, wreck_positions, wreck_pools, world_width, world_height) = self.build_global_view();
         for (idx, agent) in self.agents_impl.iter_mut().enumerate() {
             // Skip decision for dead agents
             if healths[idx] <= 0.0 {
@@ -141,6 +142,8 @@ impl Simulation {
                 shields:         &shields,
                 wreck_positions: &wreck_positions,
                 wreck_pools:     &wreck_pools,
+                world_width:     world_width,
+                world_height:    world_height,
             };
             let action = agent.think(&view);
             self.commands.insert(idx, action.clone());
@@ -162,40 +165,7 @@ impl Simulation {
         bullet::run(self);
 
         // Phase 6: Loot System
-        for (&aid, action) in &self.commands {
-            if let Action::Loot = action {
-                let px = self.agents_data[aid * AGENT_STRIDE + IDX_X];
-                let py = self.agents_data[aid * AGENT_STRIDE + IDX_Y];
-                let range2 = self.config.loot_range * self.config.loot_range;
-                let mut best = None;
-                let mut best_d2 = f32::MAX;
-                let wd = &mut self.wrecks_data;
-                let mut i = 0;
-                while i + WRECK_STRIDE <= wd.len() {
-                    let wx = wd[i + IDX_WRECK_X];
-                    let wy = wd[i + IDX_WRECK_Y];
-                    let dx = wx - px;
-                    let dy = wy - py;
-                    let d2 = dx * dx + dy * dy;
-                    if d2 <= range2 && d2 < best_d2 {
-                        best_d2 = d2;
-                        best = Some(i);
-                    }
-                    i += WRECK_STRIDE;
-                }
-                if let Some(idx0) = best {
-                    let pool = &mut wd[idx0 + IDX_WRECK_POOL];
-                    let gain = (*pool * self.config.loot_fraction) + self.config.loot_fixed;
-                    let actual = gain.min(*pool);
-                    *pool -= actual;
-                    let hslot = aid * AGENT_STRIDE + IDX_HEALTH;
-                    self.agents_data[hslot] = (self.agents_data[hslot] + actual).min(self.config.health_max);
-                    if *pool <= 0.0 {
-                        wd.drain(idx0..idx0 + WRECK_STRIDE);
-                    }
-                }
-            }
-        }
+        loot::run(self);
 
         // Shield regeneration pass: regen if no hit recently
         let agent_count = self.agents_data.len() / AGENT_STRIDE;
@@ -277,7 +247,7 @@ impl Simulation {
     }
 
     /// Flatten agents_data buffers into read-only vectors (positions, teams, healths, shields)
-    fn build_global_view(&self) -> (Vec<Vec2>, Vec<usize>, Vec<f32>, Vec<f32>, Vec<Vec2>, Vec<f32>) {
+    fn build_global_view(&self) -> (Vec<Vec2>, Vec<usize>, Vec<f32>, Vec<f32>, Vec<Vec2>, Vec<f32>, f32, f32) {
         let count = self.agents_data.len() / AGENT_STRIDE;
         let mut positions = Vec::with_capacity(count);
         let mut teams = Vec::with_capacity(count);
@@ -302,7 +272,7 @@ impl Simulation {
             wreck_positions.push(Vec2 { x: wx, y: wy });
             wreck_pools.push(wp);
         }
-        (positions, teams, healths, shields, wreck_positions, wreck_pools)
+        (positions, teams, healths, shields, wreck_positions, wreck_pools, self.width as f32, self.height as f32)
     }
 }
 
@@ -312,7 +282,7 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let mut sim = Simulation::new(10, 10, 0, 0, 0, 0);
+        let _sim = Simulation::new(10, 10, 0, 0, 0, 0);
         // Add test logic here
     }
 
@@ -366,7 +336,7 @@ mod tests {
 #[cfg(test)]
 mod integration_tests {
     use super::*;
-    use crate::domain::{Action, Weapon};
+    use crate::domain::{Action};
     use crate::{AGENT_STRIDE, IDX_HEALTH};
 
     #[test]
@@ -378,7 +348,7 @@ mod integration_tests {
             3.0, 4.0, 1.0, 100.0, sim.config.max_shield, 0.0,
         ]);
         sim.commands.clear();
-        sim.commands.insert(0, Action::Fire { weapon: Weapon::Laser { damage: 5.0, range: 10.0 } });
+        sim.commands.insert(0, Action::Fire { weapon: crate::domain::Weapon::Laser { damage: 5.0, range: 10.0 } });
         sim.step();
         assert_eq!(sim.fire_count, 1);
         let base = 1 * AGENT_STRIDE;
@@ -398,7 +368,7 @@ mod integration_tests {
             100.0, 0.0,
         ]);
         sim.commands.clear();
-        sim.commands.insert(0, Action::Fire { weapon: Weapon::Laser { damage: 5.0, range: 10.0 } });
+        sim.commands.insert(0, Action::Fire { weapon: crate::domain::Weapon::Laser { damage: 5.0, range: 10.0 } });
         sim.step();
         assert_eq!(sim.fire_count, 0);
         assert_eq!(sim.agents_data[IDX_HEALTH], 100.0);
@@ -412,11 +382,11 @@ mod integration_tests {
         sim.agents_data.extend(&[
             0.0, 0.0, 0.0, 100.0,
             100.0, 0.0,
-            100.0, 100.0, 1.0, 100.0,
+            50.0, 50.0, 1.0, 100.0,
             100.0, 0.0,
         ]);
         sim.commands.clear();
-        sim.commands.insert(0, Action::Fire { weapon: Weapon::Laser { damage: 5.0, range: 10.0 } });
+        sim.commands.insert(0, Action::Fire { weapon: crate::domain::Weapon::Laser { damage: 5.0, range: 10.0 } });
         sim.step();
         assert_eq!(sim.fire_count, 0);
         assert_eq!(sim.agents_data[1 * AGENT_STRIDE + IDX_HEALTH], 100.0);
