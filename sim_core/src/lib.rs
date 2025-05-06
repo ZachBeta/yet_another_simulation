@@ -1,19 +1,19 @@
 // Core simulation in Rust with WASM bindings
-#[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 use js_sys::Math;
 use std::collections::HashMap;
+
 mod domain;
-use domain::{Action, Vec2, Agent, WorldView};
+use domain::{Action, Weapon, Vec2, Agent, WorldView};
 
 mod config;
-use config::Config;
+use config::{Config, DistanceMode};
 
 mod movement;
 mod combat;
 mod bullet;
+mod loot;
 mod ai;
-mod loot; // Add loot module
 
 use crate::ai::NaiveAgent;
 
@@ -233,6 +233,17 @@ impl Simulation {
     pub fn loot_fraction(&self) -> f32 { self.config.loot_fraction }
     /// Initial pool fraction of max health in new wrecks
     pub fn loot_init_ratio(&self) -> f32 { self.config.loot_init_ratio }
+    /// Returns true if distance mode is toroidal (wrap)
+    pub fn is_toroidal(&self) -> bool {
+        matches!(self.config.distance_mode, DistanceMode::Toroidal)
+    }
+    /// Set distance mode at runtime: "euclidean" or "toroidal"
+    pub fn set_distance_mode(&mut self, mode: &str) {
+        self.config.distance_mode = match mode {
+            "euclidean" => DistanceMode::Euclidean,
+            _ => DistanceMode::Toroidal,
+        };
+    }
 }
 
 impl Simulation {
@@ -282,7 +293,7 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let _sim = Simulation::new(10, 10, 0, 0, 0, 0);
+        let mut sim = Simulation::new(10, 10, 0, 0, 0, 0);
         // Add test logic here
     }
 
@@ -336,7 +347,7 @@ mod tests {
 #[cfg(test)]
 mod integration_tests {
     use super::*;
-    use crate::domain::{Action};
+    use crate::domain::{Action, Weapon};
     use crate::{AGENT_STRIDE, IDX_HEALTH};
 
     #[test]
@@ -348,7 +359,7 @@ mod integration_tests {
             3.0, 4.0, 1.0, 100.0, sim.config.max_shield, 0.0,
         ]);
         sim.commands.clear();
-        sim.commands.insert(0, Action::Fire { weapon: crate::domain::Weapon::Laser { damage: 5.0, range: 10.0 } });
+        sim.commands.insert(0, Action::Fire { weapon: Weapon::Laser { damage: 5.0, range: 10.0 } });
         sim.step();
         assert_eq!(sim.fire_count, 1);
         let base = 1 * AGENT_STRIDE;
@@ -368,7 +379,7 @@ mod integration_tests {
             100.0, 0.0,
         ]);
         sim.commands.clear();
-        sim.commands.insert(0, Action::Fire { weapon: crate::domain::Weapon::Laser { damage: 5.0, range: 10.0 } });
+        sim.commands.insert(0, Action::Fire { weapon: Weapon::Laser { damage: 5.0, range: 10.0 } });
         sim.step();
         assert_eq!(sim.fire_count, 0);
         assert_eq!(sim.agents_data[IDX_HEALTH], 100.0);
@@ -382,14 +393,32 @@ mod integration_tests {
         sim.agents_data.extend(&[
             0.0, 0.0, 0.0, 100.0,
             100.0, 0.0,
-            50.0, 50.0, 1.0, 100.0,
+            100.0, 100.0, 1.0, 100.0,
             100.0, 0.0,
         ]);
         sim.commands.clear();
-        sim.commands.insert(0, Action::Fire { weapon: crate::domain::Weapon::Laser { damage: 5.0, range: 10.0 } });
+        sim.commands.insert(0, Action::Fire { weapon: Weapon::Laser { damage: 5.0, range: 10.0 } });
         sim.step();
         assert_eq!(sim.fire_count, 0);
         assert_eq!(sim.agents_data[1 * AGENT_STRIDE + IDX_HEALTH], 100.0);
         assert!(sim.hits_data.is_empty());
+    }
+
+    #[test]
+    fn integration_loot_wrap() {
+        let mut sim = Simulation::new(1000, 1000, 0, 0, 0, 0);
+        sim.agents_data.clear();
+        sim.agents_data.extend(&[
+            998.0, 0.0, 0.0, 50.0, sim.config.max_shield, 0.0,
+        ]);
+        sim.wrecks_data.clear();
+        sim.wrecks_data.extend(&[2.0, 0.0, 20.0]);
+        sim.commands.clear();
+        sim.commands.insert(0, Action::Loot);
+        sim.step();
+        assert_eq!(sim.loot_count, 1);
+        let expected = sim.config.loot_fixed + sim.config.loot_fraction * 20.0;
+        assert_eq!(sim.agents_data[IDX_HEALTH], (50.0 + expected).min(sim.config.health_max));
+        assert_eq!(sim.wrecks_data[IDX_WRECK_POOL], 20.0 - expected);
     }
 }

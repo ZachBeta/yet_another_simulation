@@ -43,7 +43,6 @@ impl Vec2 {
 }
 
 #[derive(Debug, Copy, Clone)]
-#[allow(dead_code)]
 pub enum Team {
     Orange,
     Yellow,
@@ -129,5 +128,14 @@ mod tests {
         let b = Vec2 { x: 8.0, y: 6.0 };
         let d2 = a.torus_dist2(b, 10.0, 10.0);
         assert_eq!(d2, 20.0);
+    }
+
+    #[test]
+    fn torus_delta_wrap_forward() {
+        let a = Vec2 { x: 995.0, y: 0.0 };
+        let b = Vec2 { x: 5.0, y: 0.0 };
+        let d = a.torus_delta(b, 1000.0, 1000.0);
+        assert_eq!(d.x, 10.0);
+        assert_eq!(d.y, 0.0);
     }
 }

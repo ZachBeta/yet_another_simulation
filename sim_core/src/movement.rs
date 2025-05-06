@@ -1,6 +1,7 @@
 use crate::Simulation;
 use crate::{AGENT_STRIDE, IDX_X, IDX_Y};
 use crate::domain::{Action, Vec2};
+use crate::config::DistanceMode;
 
 /// Execute the movement phase (thrust integration) outside of Simulation.
 pub fn run(sim: &mut Simulation) {
@@ -25,8 +26,12 @@ pub fn run(sim: &mut Simulation) {
                 vy *= factor;
             }
 
-            // integrate velocity and wrap
-            let moved = Vec2 { x: x + vx, y: y + vy }.wrap(w, h);
+            // integrate velocity and wrap (toroidal) or clamp (euclidean)
+            let newpos = Vec2 { x: x + vx, y: y + vy };
+            let moved = match sim.config.distance_mode {
+                DistanceMode::Toroidal  => newpos.wrap(w, h),
+                DistanceMode::Euclidean => Vec2 { x: newpos.x.clamp(0.0, w), y: newpos.y.clamp(0.0, h) },
+            };
             sim.agents_data[base + IDX_X] = moved.x;
             sim.agents_data[base + IDX_Y] = moved.y;
         }

@@ -33,6 +33,7 @@ pub fn run(sim: &mut Simulation) {
                 *pool -= actual;
                 let hslot = aid * AGENT_STRIDE + IDX_HEALTH;
                 sim.agents_data[hslot] = (sim.agents_data[hslot] + actual).min(sim.config.health_max);
+                sim.loot_count += 1;
                 if *pool <= 0.0 {
                     wd.drain(idx0..idx0 + WRECK_STRIDE);
                 }

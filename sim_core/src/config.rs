@@ -14,7 +14,6 @@ pub struct Config {
     /// Maximum speed (units per tick).
     pub max_speed: f32,
     /// View range for Fog of War (units).
-    #[allow(dead_code)]
     pub view_range: f32,
     /// Ticks without damage before shield regen starts.
     pub shield_regen_delay: u32,
@@ -36,6 +35,15 @@ pub struct Config {
     pub health_flee_ratio: f32,
     /// Health ratio above which agents re-engage (0.0-1.0)
     pub health_engage_ratio: f32,
+    /// Distance calculation mode for AI
+    pub distance_mode: DistanceMode,
+}
+
+/// Selects distance calculation mode for AI
+#[derive(Clone, Copy)]
+pub enum DistanceMode {
+    Euclidean,
+    Toroidal,
 }
 
 impl Default for Config {
@@ -57,6 +65,7 @@ impl Default for Config {
             loot_init_ratio:   0.5,
             health_flee_ratio:   0.2,
             health_engage_ratio: 0.5,
+            distance_mode: DistanceMode::Toroidal,
         }
     }
 }

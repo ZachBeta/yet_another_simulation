@@ -95,6 +95,25 @@ function updateStats() {
 
 function draw() {
   ctx.clearRect(0,0,canvas.width,canvas.height);
+  const buf = 5, W = canvas.width, H = canvas.height;
+  function getWrapPositions(x, y) {
+    const pos = [[x, y]];
+    if (x < buf) pos.push([x + W, y]);
+    if (x > W - buf) pos.push([x - W, y]);
+    if (y < buf) pos.push([x, y + H]);
+    if (y > H - buf) pos.push([x, y - H]);
+    if (x < buf && y < buf) pos.push([x + W, y + H]);
+    if (x < buf && y > H - buf) pos.push([x + W, y - H]);
+    if (x > W - buf && y < buf) pos.push([x - W, y + H]);
+    if (x > W - buf && y > H - buf) pos.push([x - W, y - H]);
+    return pos;
+  }
+  const isToroidal = sim.is_toroidal();
+  function getPositions(x, y) {
+    return isToroidal ? getWrapPositions(x, y) : [[x, y]];
+  }
+  const xOffsets = isToroidal ? [-W, 0, W] : [0];
+  const yOffsets = isToroidal ? [-H, 0, H] : [0];
   // HP & Shield bar parameters
   const t = 3, g = 3, R = 4;
   const maxHealth = 100;
@@ -107,37 +126,26 @@ function draw() {
   for (let i = ptr; i < ptr + len; i += 6) {
     const x = mem[i], y = mem[i+1], teamId = mem[i+2]|0, health = mem[i+3], shield = mem[i+4];
     if (health <= 0) continue;
-    ctx.fillStyle = hexToRgba(TEAM_COLORS[teamId], Math.max(health/100,0));
-    ctx.beginPath();
-    ctx.arc(x, y, 4, 0, 2*Math.PI);
-    ctx.fill();
-    // Draw full-circle shield and health rings outside the hull
-    drawRing(ctx, x, y, shieldRadius, t, shield / maxShield,
-             'rgba(255,0,0,0.5)', '#00ffff');
-    drawRing(ctx, x, y, healthRadius, t, health / maxHealth,
-             'rgba(255,0,0,0.5)', '#ffffff');
-    // overlay ranges for all ships
-    const attackR = sim.attack_range();
-    const sepR = sim.sep_range();
-    ctx.fillStyle = hexToRgba(TEAM_COLORS[teamId], 0.05);
-    ctx.beginPath();
-    ctx.arc(x, y, attackR, 0, 2*Math.PI);
-    ctx.fill();
-    ctx.strokeStyle = hexToRgba(TEAM_COLORS[teamId], 0.15);
-    ctx.beginPath();
-    ctx.arc(x, y, sepR, 0, 2*Math.PI);
-    ctx.stroke();
-    // draw hitscan vectors
-    const hitsPtr = sim.hits_ptr() >>> 2;
-    const hitsLen = sim.hits_len();
-    ctx.strokeStyle = 'rgba(255,0,0,0.5)';
-    ctx.beginPath();
-    for (let i = hitsPtr; i < hitsPtr + hitsLen; i += 4) {
-      const x1 = mem[i], y1 = mem[i+1], x2 = mem[i+2], y2 = mem[i+3];
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
+    for (const [xx, yy] of getPositions(x, y)) {
+      ctx.fillStyle = hexToRgba(TEAM_COLORS[teamId], Math.max(health/100,0));
+      ctx.beginPath();
+      ctx.arc(xx, yy, 4, 0, 2*Math.PI);
+      ctx.fill();
+      drawRing(ctx, xx, yy, shieldRadius, t, shield / maxShield,
+               'rgba(255,0,0,0.5)', '#00ffff');
+      drawRing(ctx, xx, yy, healthRadius, t, health / maxHealth,
+               'rgba(255,0,0,0.5)', '#ffffff');
+      const attackR = sim.attack_range();
+      const sepR = sim.sep_range();
+      ctx.fillStyle = hexToRgba(TEAM_COLORS[teamId], 0.05);
+      ctx.beginPath();
+      ctx.arc(xx, yy, attackR, 0, 2*Math.PI);
+      ctx.fill();
+      ctx.strokeStyle = hexToRgba(TEAM_COLORS[teamId], 0.15);
+      ctx.beginPath();
+      ctx.arc(xx, yy, sepR, 0, 2*Math.PI);
+      ctx.stroke();
     }
-    ctx.stroke();
   }
   // Draw wrecks
   const wptr = sim.wrecks_ptr() >>> 2;
@@ -145,13 +153,30 @@ function draw() {
   const initPool = sim.health_max() * sim.loot_init_ratio();
   for (let j = wptr; j < wptr + wlen; j += 3) {
     const wx = mem[j], wy = mem[j+1], pool = mem[j+2];
-    const frac = pool / initPool;
-    ctx.fillStyle = 'rgba(128,128,128,0.6)';
-    ctx.beginPath();
-    ctx.arc(wx, wy, 3, 0, 2*Math.PI);
-    ctx.fill();
-    drawRing(ctx, wx, wy, healthRadius + 2, 2, frac,
-             'rgba(128,128,128,0.2)', 'rgba(192,192,192,0.8)');
+    for (const [xx, yy] of getPositions(wx, wy)) {
+      ctx.fillStyle = 'rgba(128,128,128,0.6)';
+      ctx.beginPath();
+      ctx.arc(xx, yy, 3, 0, 2*Math.PI);
+      ctx.fill();
+      drawRing(ctx, xx, yy, healthRadius + 2, 2, pool / initPool,
+               'rgba(128,128,128,0.2)', 'rgba(192,192,192,0.8)');
+    }
+  }
+  // Draw hitscan vectors
+  const hitsPtr = sim.hits_ptr() >>> 2;
+  const hitsLen = sim.hits_len();
+  ctx.strokeStyle = 'rgba(255,0,0,0.5)';
+  for (let dx of xOffsets) {
+    for (let dy of yOffsets) {
+      ctx.beginPath();
+      for (let i = hitsPtr; i < hitsPtr + hitsLen; i += 4) {
+        const x1 = mem[i] + dx, y1 = mem[i+1] + dy;
+        const x2 = mem[i+2] + dx, y2 = mem[i+3] + dy;
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+      }
+      ctx.stroke();
+    }
   }
 }
 
@@ -185,6 +210,15 @@ async function initSim() {
   const b = Number(blueInput.value);
   sim = new Simulation(canvas.width, canvas.height, o, y, g, b);
   draw(); updateStats();
+  // Mode control binding
+  const modeSelect = document.getElementById('modeSelect');
+  const modeDisplay = document.getElementById('modeDisplay');
+  modeSelect.value = sim.is_toroidal() ? 'toroidal' : 'euclidean';
+  modeDisplay.textContent = 'Mode: ' + modeSelect.options[modeSelect.selectedIndex].text;
+  modeSelect.onchange = () => {
+    sim.set_distance_mode(modeSelect.value);
+    modeDisplay.textContent = 'Mode: ' + modeSelect.options[modeSelect.selectedIndex].text;
+  };
 }
 
 initSim();

@@ -1,6 +1,6 @@
 use crate::Simulation;
 use crate::{AGENT_STRIDE, IDX_X, IDX_Y, IDX_TEAM, IDX_HEALTH, IDX_SHIELD, IDX_LAST_HIT};
-use crate::domain::{Action, Weapon, Vec2};
+use crate::domain::{Action, Weapon};
 
 /// Execute the combat phase (fire resolution) outside of Simulation.
 pub fn run(sim: &mut Simulation) {
@@ -21,9 +21,9 @@ pub fn run(sim: &mut Simulation) {
                         let h2 = sim.agents_data[basej + IDX_HEALTH];
                         let t2 = sim.agents_data[basej + IDX_TEAM] as usize;
                         if j != id && h2 > 0.0 && t2 != shooter_team {
-                            let shooter = Vec2 { x: sx, y: sy };
-                            let target = Vec2 { x: sim.agents_data[basej + IDX_X], y: sim.agents_data[basej + IDX_Y] };
-                            let dist2 = shooter.torus_dist2(target, sim.width as f32, sim.height as f32);
+                            let dx = sim.agents_data[basej + IDX_X] - sx;
+                            let dy = sim.agents_data[basej + IDX_Y] - sy;
+                            let dist2 = dx * dx + dy * dy;
                             if dist2 < dmin {
                                 dmin = dist2;
                                 closest = Some(j);
@@ -70,7 +70,7 @@ pub fn run(sim: &mut Simulation) {
                     sim.bullets_data.push(*damage);
                     sim.bullets_data.push(0.0);
                 }
-                // no other variants
+                _ => {}
             }
         }
     }
@@ -82,7 +82,7 @@ mod tests {
     use super::*;
     use crate::domain::{Action, Weapon};
     use crate::Simulation;
-    use crate::{AGENT_STRIDE, IDX_HEALTH, IDX_SHIELD};
+    use crate::{AGENT_STRIDE, IDX_X, IDX_Y, IDX_TEAM, IDX_HEALTH, IDX_SHIELD};
 
     /// Helper to create a simulation with custom agents
     fn make_sim(data: &[(f32, f32, usize, f32)]) -> Simulation {
@@ -129,7 +129,7 @@ mod tests {
 
     #[test]
     fn no_hit_out_of_range() {
-        let mut sim = make_sim(&[(0.0, 0.0, 0, 100.0), (50.0, 50.0, 1, 100.0)]);
+        let mut sim = make_sim(&[(0.0, 0.0, 0, 100.0), (100.0, 100.0, 1, 100.0)]);
         sim.commands.insert(0, Action::Fire { weapon: Weapon::Laser { damage: 5.0, range: 10.0 } });
         run(&mut sim);
         let base = 1 * AGENT_STRIDE;

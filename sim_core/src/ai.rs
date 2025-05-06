@@ -1,4 +1,4 @@
-use crate::config::Config;
+use crate::config::{Config, DistanceMode};
 use crate::domain::{WorldView, Agent, Action, Vec2, Weapon};
 
 // AI state machine states
@@ -30,7 +30,7 @@ impl NaiveAgent {
         let mut best_e_d2 = f32::MAX;
         for (j, &pos) in view.positions.iter().enumerate() {
             if j != view.self_idx && view.healths[j] > 0.0 && view.teams[j] != view.self_team {
-                let d2 = view.self_pos.torus_dist2(pos, view.world_width, view.world_height);
+                let d2 = view.dist2(pos, cfg);
                 if d2 < best_e_d2 {
                     best_e_d2 = d2;
                     nearest_enemy = Some(j);
@@ -43,7 +43,7 @@ impl NaiveAgent {
         let mut best_w_d2 = f32::MAX;
         for (wi, &pos) in view.wreck_positions.iter().enumerate() {
             if view.wreck_pools[wi] > 0.0 {
-                let d2 = view.self_pos.torus_dist2(pos, view.world_width, view.world_height);
+                let d2 = view.dist2(pos, cfg);
                 if d2 < best_w_d2 {
                     best_w_d2 = d2;
                     nearest_wreck = Some(wi);
@@ -70,9 +70,8 @@ impl NaiveAgent {
 
             AgentState::Engaging { target } => {
                 let pos = view.positions[*target];
-                let delta = view.self_pos.torus_delta(pos, view.world_width, view.world_height);
-                let dist2 = delta.x * delta.x + delta.y * delta.y;
-                let dist = dist2.sqrt();
+                let delta = view.delta(pos, cfg);
+                let dist = delta.length();
                 if dist <= cfg.attack_range {
                     Action::Fire { weapon: Weapon::Laser { damage: self.attack_damage, range: cfg.attack_range } }
                 } else {
@@ -81,12 +80,12 @@ impl NaiveAgent {
                     let mut sep_dy = 0.0;
                     for (j, &p) in view.positions.iter().enumerate() {
                         if j != view.self_idx && view.healths[j] > 0.0 {
-                            let sep_delta = view.self_pos.torus_delta(p, view.world_width, view.world_height);
+                            let sep_delta = view.delta(p, cfg);
                             let d2 = sep_delta.x * sep_delta.x + sep_delta.y * sep_delta.y;
-                            if d2 < cfg.sep_range * cfg.sep_range && d2 > 0.0 {
+                            if d2 <= cfg.sep_range * cfg.sep_range && d2 > 0.0 {
                                 let d = d2.sqrt();
-                                sep_dx += sep_delta.x / d;
-                                sep_dy += sep_delta.y / d;
+                                sep_dx -= sep_delta.x / d;
+                                sep_dy -= sep_delta.y / d;
                             }
                         }
                     }
@@ -102,14 +101,11 @@ impl NaiveAgent {
                 // flee from nearest enemy
                 if let Some((j, _)) = view.positions.iter().enumerate()
                     .filter(|(j,_)| *j != view.self_idx && view.healths[*j] > 0.0 && view.teams[*j] != view.self_team)
-                    .map(|(j,p)| {
-                        let d2 = view.self_pos.torus_dist2(*p, view.world_width, view.world_height);
-                        (j, d2)
-                    })
+                    .map(|(j,p)| (j, view.dist2(*p, cfg)))
                     .min_by(|a,b| a.1.partial_cmp(&b.1).unwrap()) {
                     let p = view.positions[j];
-                    let delta = view.self_pos.torus_delta(p, view.world_width, view.world_height);
-                    let dist = (delta.x * delta.x + delta.y * delta.y).sqrt().max(1e-6);
+                    let delta = view.delta(p, cfg);
+                    let dist = delta.length().max(1e-6);
                     let vx = -delta.x / dist * self.speed;
                     let vy = -delta.y / dist * self.speed;
                     Action::Thrust(Vec2 { x: vx, y: vy })
@@ -120,12 +116,12 @@ impl NaiveAgent {
 
             AgentState::Looting { wreck } => {
                 let pos = view.wreck_positions[*wreck];
-                let d2 = view.self_pos.torus_dist2(pos, view.world_width, view.world_height);
+                let d2 = view.dist2(pos, cfg);
                 if d2 <= cfg.loot_range * cfg.loot_range && view.wreck_pools[*wreck] > 0.0 {
                     Action::Loot
                 } else {
-                    let dist = d2.sqrt().max(1e-6);
-                    let delta = view.self_pos.torus_delta(pos, view.world_width, view.world_height);
+                    let delta = view.delta(pos, cfg);
+                    let dist = delta.length().max(1e-6);
                     let vx = delta.x / dist * self.speed;
                     let vy = delta.y / dist * self.speed;
                     Action::Thrust(Vec2 { x: vx, y: vy })
@@ -140,6 +136,20 @@ impl Agent for NaiveAgent {
         let cfg = Config::default();
         self.update_state(view, &cfg);
         self.decide_action(view, &cfg)
+    }
+}
+
+// Unified distance helpers based on config
+impl<'a> WorldView<'a> {
+    pub fn delta(&self, pos: Vec2, cfg: &Config) -> Vec2 {
+        match cfg.distance_mode {
+            DistanceMode::Toroidal => self.self_pos.torus_delta(pos, self.world_width, self.world_height),
+            DistanceMode::Euclidean => Vec2 { x: pos.x - self.self_pos.x, y: pos.y - self.self_pos.y },
+        }
+    }
+    pub fn dist2(&self, pos: Vec2, cfg: &Config) -> f32 {
+        let d = self.delta(pos, cfg);
+        d.x * d.x + d.y * d.y
     }
 }
 
@@ -263,6 +273,175 @@ mod tests {
             assert!(v.x < 0.0);
         } else {
             panic!("Expected Thrust action");
+        }
+    }
+
+    #[test]
+    fn cross_border_targeting() {
+        let mut agent = NaiveAgent::new(1.0, 1.0);
+        let positions = vec![Vec2 { x: 900.0, y: 0.0 }, Vec2 { x: 100.0, y: 0.0 }];
+        let teams = vec![0, 1];
+        let healths = vec![100.0, 100.0];
+        let shields = vec![0.0, 0.0];
+        let view = WorldView {
+            self_idx:    0,
+            self_pos:    positions[0],
+            self_team:   0,
+            self_health: 100.0,
+            self_shield: shields[0],
+            positions:   &positions,
+            teams:       &teams,
+            healths:     &healths,
+            shields:     &shields,
+            wreck_positions: &[],
+            wreck_pools:     &[],
+            world_width: 1000.0,
+            world_height: 1000.0,
+        };
+        if let Action::Thrust(v) = agent.think(&view) {
+            assert!(v.x > 0.0);
+        } else {
+            panic!("Expected Thrust action");
+        }
+    }
+
+    #[test]
+    fn wrap_thrust_direct() {
+        let mut agent = NaiveAgent::new(1.0, 1.0);
+        let positions = vec![Vec2 { x: 995.0, y: 0.0 }, Vec2 { x: 60.0, y: 0.0 }];
+        let teams = vec![0, 1];
+        let healths = vec![100.0, 100.0];
+        let shields = vec![0.0, 0.0];
+        let view = WorldView {
+            self_idx:    0,
+            self_pos:    positions[0],
+            self_team:   0,
+            self_health: healths[0],
+            self_shield: shields[0],
+            positions:   &positions,
+            teams:       &teams,
+            healths:     &healths,
+            shields:     &shields,
+            wreck_positions: &[],
+            wreck_pools:     &[],
+            world_width: 1000.0,
+            world_height: 1000.0,
+        };
+        let action = agent.think(&view);
+        if let Action::Thrust(v) = action {
+            assert!(v.x > 0.0);
+            assert!(v.y.abs() < 1e-6);
+        } else {
+            panic!("Expected Thrust action");
+        }
+    }
+
+    #[test]
+    fn wrap_pursuit_no_separation() {
+        let mut agent = NaiveAgent::new(1.0, 1.0);
+        let mut cfg = Config::default();
+        cfg.sep_strength = 0.0;
+        cfg.attack_range = 0.0;
+        let positions = vec![Vec2 { x: 995.0, y: 0.0 }, Vec2 { x: 5.0, y: 0.0 }];
+        let teams = vec![0, 1];
+        let healths = vec![100.0, 100.0];
+        let shields = vec![0.0, 0.0];
+        let view = WorldView {
+            self_idx:    0,
+            self_pos:    positions[0],
+            self_team:   0,
+            self_health: healths[0],
+            self_shield: shields[0],
+            positions:   &positions,
+            teams:       &teams,
+            healths:     &healths,
+            shields:     &shields,
+            wreck_positions: &[],
+            wreck_pools:     &[],
+            world_width: 1000.0,
+            world_height: 1000.0,
+        };
+        // force state to Engaging
+        agent.state = AgentState::Engaging { target: 1 };
+        let action = agent.decide_action(&view, &cfg);
+        if let Action::Thrust(v) = action {
+            assert!(v.x > 0.0, "Expected positive x thrust, got {:?}", v);
+            assert!(v.y.abs() < 1e-6, "Expected y≈0, got {:?}", v);
+        } else {
+            panic!("Expected Thrust action, got {:?}", action);
+        }
+    }
+
+    #[test]
+    fn separation_only_repulsion() {
+        // Given: pursuit disabled (speed=0), sep_strength=1, no firing
+        let mut agent = NaiveAgent::new(0.0, 1.0);
+        let mut cfg = Config::default();
+        cfg.sep_strength = 1.0;
+        cfg.attack_range = 0.0;
+        let positions = vec![Vec2 { x: 995.0, y: 0.0 }, Vec2 { x: 5.0, y: 0.0 }];
+        let teams = vec![0, 1];
+        let healths = vec![100.0, 100.0];
+        let shields = vec![0.0, 0.0];
+        let view = WorldView {
+            self_idx: 0,
+            self_pos: positions[0],
+            self_team: 0,
+            self_health: healths[0],
+            self_shield: shields[0],
+            positions: &positions,
+            teams: &teams,
+            healths: &healths,
+            shields: &shields,
+            wreck_positions: &[],
+            wreck_pools: &[],
+            world_width: 1000.0,
+            world_height: 1000.0,
+        };
+        agent.state = AgentState::Engaging { target: 1 };
+        let action = agent.decide_action(&view, &cfg);
+        if let Action::Thrust(v) = action {
+            assert!(v.x < 0.0, "Expected negative x thrust, got {:?}", v);
+            assert!(v.y.abs() < 1e-6, "Expected y≈0, got {:?}", v);
+        } else {
+            panic!("Expected Thrust action, got {:?}", action);
+        }
+    }
+
+    #[test]
+    fn pursuit_and_separation_mixing() {
+        // Given: speed=1, sep_strength=0.5, no firing
+        let mut agent = NaiveAgent::new(1.0, 1.0);
+        let mut cfg = Config::default();
+        cfg.sep_strength = 0.5;
+        cfg.attack_range = 0.0;
+        let positions = vec![Vec2 { x: 995.0, y: 0.0 }, Vec2 { x: 5.0, y: 0.0 }];
+        let teams = vec![0, 1];
+        let healths = vec![100.0, 100.0];
+        let shields = vec![0.0, 0.0];
+        let view = WorldView {
+            self_idx: 0,
+            self_pos: positions[0],
+            self_team: 0,
+            self_health: healths[0],
+            self_shield: shields[0],
+            positions: &positions,
+            teams: &teams,
+            healths: &healths,
+            shields: &shields,
+            wreck_positions: &[],
+            wreck_pools: &[],
+            world_width: 1000.0,
+            world_height: 1000.0,
+        };
+        agent.state = AgentState::Engaging { target: 1 };
+        let action = agent.decide_action(&view, &cfg);
+        if let Action::Thrust(v) = action {
+            // pursuit=+1, separation=-1*0.5 => total=+0.5
+            assert!(v.x > 0.4 && v.x < 0.6, "Expected x≈0.5, got {:?}", v);
+            assert!(v.y.abs() < 1e-6, "Expected y≈0, got {:?}", v);
+        } else {
+            panic!("Expected Thrust action, got {:?}", action);
         }
     }
 }
