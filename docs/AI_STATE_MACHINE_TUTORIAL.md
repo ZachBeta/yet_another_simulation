@@ -1,103 +1,108 @@
-# AI State Machine Refactor Tutorial
+# AI State Machine Refinement Tutorial
 
-This tutorial guides you through refactoring `NaiveAgent` into a clear, testable state machine. Follow each phase, verify with unit tests, and build up behavior incrementally.
-
----
-## Phase 0: Prep & Cleanup
-1. **Remove old flag**: In `sim_core/src/ai.rs`, open `struct NaiveAgent` and delete the `retreating: bool` field.
-2. **Import future types**: Add a placeholder for your upcoming `AgentState` enum (no errors yet).
+A step-by-step guide for a mid-level Rust SWE to eliminate silent Idle stalls and improve agent behavior in `sim_core`.
 
 ---
-## Phase 1: Define States & Storage
-**File**: `sim_core/src/ai.rs`
-1. At top (outside any `impl`), add:
+
+## Prerequisites
+
+- Familiarity with Rust & Cargo
+- Understanding of `sim_core` architecture: `Config`, `WorldView`, `Agent`, `Simulation`
+- Basic unit testing in Rust (`#[test]`)
+
+---
+
+## Phase 1: Diagnose the Silent Idle
+
+1. **Instrument `update_state`**
+   - Add a counter or log when `self.state` transitions to `AgentState::Idle`.
+   - Example:
+     ```rust
+     if new_state == AgentState::Idle {
+         self.idle_transition_count += 1;
+         log::warn!("Idle transition at tick {}", self.tick_count);
+     }
+     ```
+2. **Write a "miss-but-keep-chasing" test**
+   - Simulate two agents:
+     - Tick 1: both in view ⇒ state == `Engaging`
+     - Tick 2: remove the enemy (or set health = 0) ⇒ ensure state stays `Engaging`.
+   - Verify no drop to Idle.
+
+---
+
+## Phase 2: Make State Updates Sticky
+
+1. **Refactor `update_state` signature**
+   ```rust
+   // old
+   fn update_state(&mut self, view: &WorldView, cfg: &Config)
+   // new
+   fn compute_next_state(&self, view: &WorldView, cfg: &Config) -> Option<AgentState>
+   ```
+2. **Apply only when Some**
+   ```rust
+   if let Some(next) = self.compute_next_state(view, cfg) {
+       self.state = next;
+   }
+   // else retain previous state
+   ```
+3. **Add unit tests**
+   - Ensure a single-frame loss of sight does **not** clear `Engaging`.
+   - Verify border-clamp under Euclidean mode doesn’t force Idle.
+
+---
+
+## Phase 3: (Optional) Fallback Search State
+
+1. **Extend `AgentState`**
    ```rust
    enum AgentState {
      Idle,
      Engaging { target: usize },
+     Looting  { wreck: usize },
      Retreating,
-     Looting { wreck: usize },
+     Searching { dir: Vec2, timer: u32 },
    }
    ```
-2. In `NaiveAgent` struct, add a new field:
+2. **Default to `Searching`** when no high-priority event:
+   - Damaged + no wreck ⇒ `Searching`
+   - Full‐health + no enemy ⇒ `Searching`
+3. **Implement in `decide_action`**
    ```rust
-   state: AgentState,  // initialize to Idle in new()
+   AgentState::Searching { dir, .. } =>
+     Action::Thrust(dir * cfg.max_speed)
    ```
-3. In `NaiveAgent::new()`, set `state: AgentState::Idle`.
+4. **Tests**
+   - Empty world ⇒ agent always returns `Thrust`, never `Idle`.
+   - On wall clamp or timer expiry, re‐pick `dir`.
 
 ---
-## Phase 2: Extract `update_state` & `decide_action`
-**File**: `sim_core/src/ai.rs`
-1. Stub two methods:
+
+## Phase 4: Expose & Observe
+
+1. **WASM Getter for `state`**
    ```rust
-   impl NaiveAgent {
-     fn update_state(&mut self, view: &WorldView, cfg: &Config) {
-       // will fill transitions here
-     }
-
-     fn decide_action(&mut self, view: &WorldView, cfg: &Config) -> Action {
-       // will match on self.state and return an Action
-     }
-   }
+   #[wasm_bindgen]
+   pub fn agent_state(&self, idx: usize) -> String { ... }
    ```
-2. Rewrite `think()` to:
-   ```rust
-   fn think(&mut self, view: &WorldView) -> Action {
-     let cfg = Config::default();
-     self.update_state(view, &cfg);
-     self.decide_action(view, &cfg)
-   }
-   ```
-
----
-## Phase 3: Implement `update_state`
-**Goal**: Move all health/engage/loot logic here.
-1. Compute thresholds:
-   ```rust
-   let flee_th = cfg.health_max * cfg.health_flee_ratio;
-   let engage_th = cfg.health_max * cfg.health_engage_ratio;
-   ```
-2. Transitions:
-   - **If** `view.self_health <= flee_th` →
-     - **if** nearest wreck available → `self.state = AgentState::Looting { wreck: idx }`
-     - **else** → `self.state = AgentState::Retreating`
-   - **Else if** `view.self_health >= engage_th` →
-     - **if** enemy in range → `self.state = AgentState::Engaging { target: idx }`
-     - **else** → `self.state = AgentState::Idle`
-   - **Else** (mid health) → same enemy check → `Engaging` or `Idle`
-
----
-## Phase 4: Implement `decide_action`
-**Goal**: For each state, emit the correct `Action`.
-
-```rust
-match &self.state {
-  AgentState::Engaging { target } => {
-    let dist = ...; // compute distance
-    if dist <= cfg.attack_range { Action::Fire { ... } }
-    else { /* thrust toward target + separation */ }
-  }
-  AgentState::Retreating => {
-    /* thrust away from nearest enemy */
-  }
-  AgentState::Looting { wreck } => {
-    /* if within cfg.loot_range → Loot, else thrust toward wreck */
-  }
-  AgentState::Idle => Action::Idle,
-}
-```
-
----
-## Phase 5: Unit Test Each Piece
-1. **`update_state` tests**: Create mock `WorldView` + `Config`, call `update_state`, assert `agent.state` matches expectation.
-2. **`decide_action` tests**: Manually set `agent.state`, prepare `WorldView`, call `decide_action`, assert returned `Action`.
-
----
-## Phase 6: Integration & Cleanup
-1. Run `cargo test` and fix any errors.
-2. Remove unused imports and old `retreating` code.
-3. Verify in browser, adjust thresholds as needed.
+2. **UI Console**
+   - Print or overlay current state in the front-end.
+   - Monitor transitions during live runs.
 
 ---
 
-By following these phases, your AI will have a clean state machine, making behaviors and tests explicit. Happy refactoring!
+## Phase 5: Iterate & Tune
+
+- Track metrics: `idle_count`, `zero_thrust_count`, `wall_hit_count`.
+- Adjust hysteresis (how long to stick in a state).
+- Refine `Searching` pattern (random, bounce, spiral).
+- Add new tests for edge cases (simultaneous damage + pursuit).
+
+---
+
+**Next Steps**:
+- Run full test suite.
+- Build & deploy WASM.
+- Observe behavior in both Euclidean & Toroidal modes.
+- Iterate based on metrics & UI feedback.
