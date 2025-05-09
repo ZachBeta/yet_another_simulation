@@ -1,7 +1,17 @@
 // Core simulation in Rust with WASM bindings
 use wasm_bindgen::prelude::*;
+#[cfg(target_arch = "wasm32")]
 use js_sys::Math;
 use std::collections::HashMap;
+
+#[cfg(target_arch = "wasm32")]
+fn random_coef() -> f32 {
+    Math::random() as f32
+}
+#[cfg(not(target_arch = "wasm32"))]
+fn random_coef() -> f32 {
+    0.5
+}
 
 mod domain;
 use domain::{Action, Weapon, Vec2, Agent, WorldView};
@@ -14,8 +24,10 @@ mod combat;
 mod bullet;
 mod loot;
 mod ai;
+mod brain;
+pub use brain::Brain;
 
-use crate::ai::NaiveAgent;
+use crate::ai::{NaiveAgent, NaiveBrain};
 
 /// Number of floats per agent in the flat buffer
 const AGENT_STRIDE: usize = 6;
@@ -54,7 +66,7 @@ pub struct Simulation {
     /// Simulation configuration parameters
     config: Config,
     /// Agent implementations for decision making
-    agents_impl: Vec<Box<dyn Agent>>,
+    agents_impl: Vec<Box<dyn Brain>>,
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
@@ -83,16 +95,20 @@ impl Simulation {
         for (team_id, &count) in counts.iter().enumerate() {
             for _ in 0..count {
                 // x coordinate
+                let half_w = width as f32 / 2.0;
+                let half_h = height as f32 / 2.0;
+                let rx = random_coef();
                 let x = if team_id % 2 == 0 {
-                    (Math::random() as f32) * (width as f32 / 2.0)
+                    rx * half_w
                 } else {
-                    (width as f32 / 2.0) + (Math::random() as f32) * (width as f32 / 2.0)
+                    half_w + rx * half_w
                 };
                 // y coordinate
+                let ry = random_coef();
                 let y = if team_id < 2 {
-                    (Math::random() as f32) * (height as f32 / 2.0)
+                    ry * half_h
                 } else {
-                    (height as f32 / 2.0) + (Math::random() as f32) * (height as f32 / 2.0)
+                    half_h + ry * half_h
                 };
                 sim.agents_data.push(x);
                 sim.agents_data.push(y);
@@ -106,7 +122,8 @@ impl Simulation {
         // Register default NaiveAgent for each ship
         let total_agents = sim.agents_data.len() / AGENT_STRIDE;
         for _ in 0..total_agents {
-            sim.register_agent(Box::new(NaiveAgent::new(1.2, 0.8)));
+            let naive = NaiveAgent::new(1.2, 0.8);
+            sim.register_agent(Box::new(NaiveBrain(naive)));
         }
         sim
     }
@@ -123,34 +140,24 @@ impl Simulation {
         // advance global tick
         self.tick_count += 1;
 
-        // Phase 2: Agent Decision
-        let (positions, teams, healths, shields, wreck_positions, wreck_pools, world_width, world_height) = self.build_global_view();
-        for (idx, agent) in self.agents_impl.iter_mut().enumerate() {
-            // Skip decision for dead agents
-            if healths[idx] <= 0.0 {
-                continue;
-            }
-            let view = WorldView {
-                self_idx:    idx,
-                self_pos:    positions[idx],
-                self_team:   teams[idx],
-                self_health: healths[idx],
-                self_shield: shields[idx],
-                positions:       &positions,
-                teams:           &teams,
-                healths:         &healths,
-                shields:         &shields,
-                wreck_positions: &wreck_positions,
-                wreck_pools:     &wreck_pools,
-                world_width:     world_width,
-                world_height:    world_height,
-            };
-            let action = agent.think(&view);
+        // Phase 2: Agent Decision (using Brain)
+        let rays = self.config.scan_rays;
+        let max_dist = self.config.scan_max_dist;
+        let count = self.agents_impl.len();
+        for idx in 0..count {
+            // Skip dead agents
+            let health = self.agents_data[idx * AGENT_STRIDE + IDX_HEALTH];
+            if health <= 0.0 { continue; }
+            // Run sensor scan and decision
+            let inputs = self.scan(idx, rays, max_dist);
+            let brain = &mut self.agents_impl[idx];
+            let action = brain.think(&inputs);
             self.commands.insert(idx, action.clone());
             match action {
                 Action::Thrust(_) => self.thrust_count += 1,
                 Action::Idle => self.idle_count += 1,
                 Action::Loot => self.loot_count += 1,
+                Action::Fire { .. } => self.fire_count += 1,
                 _ => {},
             }
         }
@@ -253,7 +260,7 @@ impl Simulation {
     }
 
     /// Register an agent for decision making
-    pub fn register_agent(&mut self, agent: Box<dyn Agent>) {
+    pub fn register_agent(&mut self, agent: Box<dyn Brain>) {
         self.agents_impl.push(agent);
     }
 
@@ -284,6 +291,89 @@ impl Simulation {
             wreck_pools.push(wp);
         }
         (positions, teams, healths, shields, wreck_positions, wreck_pools, self.width as f32, self.height as f32)
+    }
+
+    /// Sensor: nearest-K encoding of self stats, enemies, allies, wrecks
+    pub fn scan(&self, agent_idx: usize, _rays: usize, _max_dist: f32) -> Vec<f32> {
+        let cfg = &self.config;
+        let (positions, teams, healths, shields, wreck_positions, wreck_pools, w, h) = self.build_global_view();
+        let self_team = teams[agent_idx];
+        let self_pos = positions[agent_idx];
+        // normalize self stats
+        let self_hp = healths[agent_idx] / cfg.health_max;
+        let self_sh = shields[agent_idx] / cfg.max_shield;
+        let mut out = Vec::with_capacity(
+            2 + 4*cfg.nearest_k_enemies + 4*cfg.nearest_k_allies + 3*cfg.nearest_k_wrecks
+        );
+        out.push(self_hp);
+        out.push(self_sh);
+        // distance squared helper
+        let dist2 = |pos: Vec2| -> f32 {
+            match cfg.distance_mode {
+                DistanceMode::Euclidean => {
+                    let dx = pos.x - self_pos.x;
+                    let dy = pos.y - self_pos.y;
+                    dx*dx + dy*dy
+                }
+                DistanceMode::Toroidal => self_pos.torus_dist2(pos, w, h),
+            }
+        };
+        // delta helper
+        let delta = |pos: Vec2| -> Vec2 {
+            match cfg.distance_mode {
+                DistanceMode::Euclidean => Vec2 { x: pos.x - self_pos.x, y: pos.y - self_pos.y },
+                DistanceMode::Toroidal => self_pos.torus_delta(pos, w, h),
+            }
+        };
+        // Nearest enemies
+        let mut enemies: Vec<_> = positions.iter().cloned().enumerate()
+            .filter(|&(i,_p)| i != agent_idx && healths[i] > 0.0 && teams[i] != self_team)
+            .map(|(i,p)| (dist2(p), i))
+            .collect();
+        enemies.sort_by(|a,b| a.0.partial_cmp(&b.0).unwrap());
+        for &(_, i) in enemies.iter().take(cfg.nearest_k_enemies) {
+            let d = delta(positions[i]);
+            out.push(d.x / (w/2.0));
+            out.push(d.y / (h/2.0));
+            out.push(healths[i] / cfg.health_max);
+            out.push(shields[i] / cfg.max_shield);
+        }
+        for _ in enemies.len()..cfg.nearest_k_enemies {
+            out.extend(&[0.0; 4]);
+        }
+        // Nearest allies
+        let mut allies: Vec<_> = positions.iter().cloned().enumerate()
+            .filter(|&(i,_p)| i != agent_idx && healths[i] > 0.0 && teams[i] == self_team)
+            .map(|(i,p)| (dist2(p), i))
+            .collect();
+        allies.sort_by(|a,b| a.0.partial_cmp(&b.0).unwrap());
+        for &(_, i) in allies.iter().take(cfg.nearest_k_allies) {
+            let d = delta(positions[i]);
+            out.push(d.x / (w/2.0));
+            out.push(d.y / (h/2.0));
+            out.push(healths[i] / cfg.health_max);
+            out.push(shields[i] / cfg.max_shield);
+        }
+        for _ in allies.len()..cfg.nearest_k_allies {
+            out.extend(&[0.0; 4]);
+        }
+        // Nearest wrecks
+        let max_wpool = cfg.health_max * cfg.loot_init_ratio;
+        let mut wrecks: Vec<_> = wreck_positions.iter().cloned().enumerate()
+            .filter(|&(i,_p)| wreck_pools[i] > 0.0)
+            .map(|(i,p)| (dist2(p), i))
+            .collect();
+        wrecks.sort_by(|a,b| a.0.partial_cmp(&b.0).unwrap());
+        for &(_, i) in wrecks.iter().take(cfg.nearest_k_wrecks) {
+            let d = delta(wreck_positions[i]);
+            out.push(d.x / (w/2.0));
+            out.push(d.y / (h/2.0));
+            out.push(wreck_pools[i] / max_wpool);
+        }
+        for _ in wrecks.len()..cfg.nearest_k_wrecks {
+            out.extend(&[0.0; 3]);
+        }
+        out
     }
 }
 
@@ -341,6 +431,22 @@ mod tests {
             sim.step();
             assert_eq!(sim.agents_data[IDX_SHIELD], 20.0);
         }
+    }
+}
+
+#[cfg(test)]
+mod scan_tests {
+    use super::*;
+
+    #[test]
+    fn scan_length_nearest_k() {
+        let sim = Simulation::new(100, 100, 1, 1, 1, 1);
+        let v = sim.scan(0, sim.config.nearest_k_enemies, sim.config.scan_max_dist);
+        let expected = 2
+            + 4 * sim.config.nearest_k_enemies
+            + 4 * sim.config.nearest_k_allies
+            + 3 * sim.config.nearest_k_wrecks;
+        assert_eq!(v.len(), expected);
     }
 }
 

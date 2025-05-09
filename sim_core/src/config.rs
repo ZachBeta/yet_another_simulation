@@ -37,6 +37,16 @@ pub struct Config {
     pub health_engage_ratio: f32,
     /// Distance calculation mode for AI
     pub distance_mode: DistanceMode,
+    /// Number of rays for sensor scan
+    pub scan_rays: usize,
+    /// Maximum distance for sensor scan (units)
+    pub scan_max_dist: f32,
+    /// Number of nearest enemies to include in sensor vector.
+    pub nearest_k_enemies: usize,
+    /// Number of nearest allies to include in sensor vector.
+    pub nearest_k_allies: usize,
+    /// Number of nearest wrecks to include in sensor vector.
+    pub nearest_k_wrecks: usize,
 }
 
 /// Selects distance calculation mode for AI
@@ -65,7 +75,12 @@ impl Default for Config {
             loot_init_ratio:   0.5,
             health_flee_ratio:   0.2,
             health_engage_ratio: 0.5,
-            distance_mode: DistanceMode::Euclidean,
+            distance_mode: DistanceMode::Toroidal,
+            scan_rays: 32,
+            scan_max_dist: 1000.0,
+            nearest_k_enemies: 8,
+            nearest_k_allies: 4,
+            nearest_k_wrecks: 4,
         }
     }
 }

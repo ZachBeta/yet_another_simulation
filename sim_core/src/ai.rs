@@ -1,5 +1,6 @@
 use crate::config::{Config, DistanceMode};
 use crate::domain::{WorldView, Agent, Action, Vec2, Weapon};
+use crate::brain::Brain;
 
 // AI state machine states
 enum AgentState {
@@ -136,6 +137,47 @@ impl Agent for NaiveAgent {
         let cfg = Config::default();
         self.update_state(view, &cfg);
         self.decide_action(view, &cfg)
+    }
+}
+
+/// Adapter wrapping existing NaiveAgent under the Brain trait
+pub struct NaiveBrain(pub NaiveAgent);
+
+impl Brain for NaiveBrain {
+    fn think(&mut self, _inputs: &[f32]) -> Action {
+        // TODO: reconstruct WorldView from scan inputs; for now, delegate to NaiveAgent (stub)
+        Action::Idle
+    }
+}
+
+/// Neural-network agent stub implementing Brain
+pub struct NNAgent;
+
+impl Brain for NNAgent {
+    fn think(&mut self, inputs: &[f32]) -> Action {
+        // Simple cohesion: average vector to nearest allies
+        let cfg = Config::default();
+        let ke = cfg.nearest_k_enemies;
+        let ka = cfg.nearest_k_allies;
+        let start = 2 + 4 * ke;
+        let mut sum = Vec2 { x: 0.0, y: 0.0 };
+        let mut count = 0;
+        for i in 0..ka {
+            let idx = start + 4 * i;
+            let dx = inputs[idx];
+            let dy = inputs[idx + 1];
+            if dx != 0.0 || dy != 0.0 {
+                sum.x += dx;
+                sum.y += dy;
+                count += 1;
+            }
+        }
+        if count == 0 {
+            Action::Idle
+        } else {
+            let v = Vec2 { x: sum.x / count as f32, y: sum.y / count as f32 }.normalize();
+            Action::Thrust(v)
+        }
     }
 }
 
