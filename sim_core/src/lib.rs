@@ -110,7 +110,7 @@ impl Simulation {
         // advance global tick
         self.tick_count += 1;
 
-        // Phase 2: Agent Decision (using Brain over full WorldView)
+        // Phase 2: Agent Decision (using Brain with WorldView & sensor inputs)
         let count = self.agents_impl.len();
         for idx in 0..count {
             // Skip dead agents
@@ -133,8 +133,9 @@ impl Simulation {
                 world_width: w,
                 world_height: h,
             };
-            // Decision via Brain
-            let action = self.agents_impl[idx].think(&view);
+            // Sensor-based decision
+            let inputs = self.scan(idx, self.config.scan_rays, self.config.scan_max_dist);
+            let action = self.agents_impl[idx].think(&view, &inputs);
             self.commands.insert(idx, action.clone());
             match action {
                 Action::Thrust(_) => self.thrust_count += 1,

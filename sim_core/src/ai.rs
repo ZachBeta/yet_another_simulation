@@ -1,5 +1,5 @@
 use crate::domain::{WorldView, Agent, Action, Vec2, Weapon};
-use crate::config::Config;
+use crate::config::{Config, DistanceMode};
 use crate::brain::Brain;
 
 // AI state machine states
@@ -22,7 +22,7 @@ impl NaiveAgent {
     }
 
     /// Update AI state based on view & config
-    fn update_state(&mut self, view: &WorldView, cfg: &crate::config::Config) {
+    fn update_state(&mut self, view: &WorldView, cfg: &Config) {
         let flee_th = cfg.health_max * cfg.health_flee_ratio;
         let engage_th = cfg.health_max * cfg.health_engage_ratio;
 
@@ -65,9 +65,32 @@ impl NaiveAgent {
     }
 
     /// Decide on an Action based on current state and view
-    fn decide_action(&mut self, view: &WorldView, cfg: &crate::config::Config) -> Action {
+    fn decide_action(&mut self, view: &WorldView, cfg: &Config) -> Action {
         match &self.state {
-            AgentState::Idle => Action::Idle,
+            AgentState::Idle => {
+                // Idle: pursue nearest enemy if any, else idle
+                let mut nearest_enemy: Option<usize> = None;
+                let mut best_d2 = f32::MAX;
+                for (j, &pos) in view.positions.iter().enumerate() {
+                    if j != view.self_idx && view.healths[j] > 0.0 && view.teams[j] != view.self_team {
+                        let d2 = view.dist2(pos, cfg);
+                        if d2 < best_d2 {
+                            best_d2 = d2;
+                            nearest_enemy = Some(j);
+                        }
+                    }
+                }
+                if let Some(e) = nearest_enemy {
+                    let pos = view.positions[e];
+                    let delta = view.delta(pos, cfg);
+                    let dist = delta.length().max(1e-6);
+                    let vx = delta.x / dist * self.speed;
+                    let vy = delta.y / dist * self.speed;
+                    Action::Thrust(Vec2 { x: vx, y: vy })
+                } else {
+                    Action::Idle
+                }
+            },
 
             AgentState::Engaging { target } => {
                 let pos = view.positions[*target];
@@ -134,7 +157,7 @@ impl NaiveAgent {
 
 impl Agent for NaiveAgent {
     fn think(&mut self, view: &WorldView) -> Action {
-        let cfg = crate::config::Config::default();
+        let cfg = Config::default();
         self.update_state(view, &cfg);
         self.decide_action(view, &cfg)
     }
@@ -144,7 +167,8 @@ impl Agent for NaiveAgent {
 pub struct NaiveBrain(pub NaiveAgent);
 
 impl Brain for NaiveBrain {
-    fn think(&mut self, view: &WorldView) -> Action {
+    fn think(&mut self, view: &WorldView, _inputs: &[f32]) -> Action {
+        // ignore sensor inputs and use existing FSM logic
         self.0.think(view)
     }
 }
@@ -153,7 +177,8 @@ impl Brain for NaiveBrain {
 pub struct NNAgent;
 
 impl Brain for NNAgent {
-    fn think(&mut self, view: &WorldView) -> Action {
+    fn think(&mut self, view: &WorldView, _inputs: &[f32]) -> Action {
+        // ignore sensor inputs for now, reuse view-based stub
         let cfg = Config::default();
         // Simple cohesion: average vector to nearest allies
         let mut sum = Vec2 { x: 0.0, y: 0.0 };
@@ -177,13 +202,13 @@ impl Brain for NNAgent {
 
 // Unified distance helpers based on config
 impl<'a> WorldView<'a> {
-    pub fn delta(&self, pos: Vec2, cfg: &crate::config::Config) -> Vec2 {
+    pub fn delta(&self, pos: Vec2, cfg: &Config) -> Vec2 {
         match cfg.distance_mode {
-            crate::config::DistanceMode::Toroidal => self.self_pos.torus_delta(pos, self.world_width, self.world_height),
-            crate::config::DistanceMode::Euclidean => Vec2 { x: pos.x - self.self_pos.x, y: pos.y - self.self_pos.y },
+            DistanceMode::Toroidal => self.self_pos.torus_delta(pos, self.world_width, self.world_height),
+            DistanceMode::Euclidean => Vec2 { x: pos.x - self.self_pos.x, y: pos.y - self.self_pos.y },
         }
     }
-    pub fn dist2(&self, pos: Vec2, cfg: &crate::config::Config) -> f32 {
+    pub fn dist2(&self, pos: Vec2, cfg: &Config) -> f32 {
         let d = self.delta(pos, cfg);
         d.x * d.x + d.y * d.y
     }
@@ -315,7 +340,7 @@ mod tests {
     #[test]
     fn cross_border_targeting() {
         let mut agent = NaiveAgent::new(1.0, 1.0);
-        let positions = vec![Vec2 { x: 900.0, y: 0.0 }, Vec2 { x: 100.0, y: 0.0 }];
+        let positions = vec![Vec2 { x: 9.0, y: 0.0 }, Vec2 { x: 1.0, y: 0.0 }];
         let teams = vec![0, 1];
         let healths = vec![100.0, 100.0];
         let shields = vec![0.0, 0.0];
@@ -331,11 +356,15 @@ mod tests {
             shields:     &shields,
             wreck_positions: &[],
             wreck_pools:     &[],
-            world_width: 1000.0,
-            world_height: 1000.0,
+            world_width: 10.0,
+            world_height: 10.0,
         };
-        if let Action::Thrust(v) = agent.think(&view) {
-            assert!(v.x > 0.0);
+        // Toroidal wrap test: use decide_action with Toroidal mode
+        let mut cfg = Config::default();
+        cfg.distance_mode = DistanceMode::Toroidal;
+        let action = agent.decide_action(&view, &cfg);
+        if let Action::Thrust(v) = action {
+            assert!(v.x > 0.0, "Expected positive x thrust, got {:?}", v);
         } else {
             panic!("Expected Thrust action");
         }
@@ -363,7 +392,10 @@ mod tests {
             world_width: 1000.0,
             world_height: 1000.0,
         };
-        let action = agent.think(&view);
+        // Toroidal wrap direct: use decide_action with Toroidal mode
+        let mut cfg = Config::default();
+        cfg.distance_mode = DistanceMode::Toroidal;
+        let action = agent.decide_action(&view, &cfg);
         if let Action::Thrust(v) = action {
             assert!(v.x > 0.0);
             assert!(v.y.abs() < 1e-6);
@@ -375,7 +407,8 @@ mod tests {
     #[test]
     fn wrap_pursuit_no_separation() {
         let mut agent = NaiveAgent::new(1.0, 1.0);
-        let mut cfg = crate::config::Config::default();
+        let mut cfg = Config::default();
+        cfg.distance_mode = DistanceMode::Toroidal;
         cfg.sep_strength = 0.0;
         cfg.attack_range = 0.0;
         let positions = vec![Vec2 { x: 995.0, y: 0.0 }, Vec2 { x: 5.0, y: 0.0 }];
@@ -383,21 +416,20 @@ mod tests {
         let healths = vec![100.0, 100.0];
         let shields = vec![0.0, 0.0];
         let view = WorldView {
-            self_idx:    0,
-            self_pos:    positions[0],
-            self_team:   0,
-            self_health: 100.0,
+            self_idx: 0,
+            self_pos: positions[0],
+            self_team: 0,
+            self_health: healths[0],
             self_shield: shields[0],
-            positions:   &positions,
-            teams:       &teams,
-            healths:     &healths,
-            shields:     &shields,
+            positions: &positions,
+            teams: &teams,
+            healths: &healths,
+            shields: &shields,
             wreck_positions: &[],
-            wreck_pools:     &[],
+            wreck_pools: &[],
             world_width: 1000.0,
             world_height: 1000.0,
         };
-        // force state to Engaging
         agent.state = AgentState::Engaging { target: 1 };
         let action = agent.decide_action(&view, &cfg);
         if let Action::Thrust(v) = action {
@@ -412,7 +444,8 @@ mod tests {
     fn separation_only_repulsion() {
         // Given: pursuit disabled (speed=0), sep_strength=1, no firing
         let mut agent = NaiveAgent::new(0.0, 1.0);
-        let mut cfg = crate::config::Config::default();
+        let mut cfg = Config::default();
+        cfg.distance_mode = DistanceMode::Toroidal;
         cfg.sep_strength = 1.0;
         cfg.attack_range = 0.0;
         let positions = vec![Vec2 { x: 995.0, y: 0.0 }, Vec2 { x: 5.0, y: 0.0 }];
@@ -448,7 +481,8 @@ mod tests {
     fn pursuit_and_separation_mixing() {
         // Given: speed=1, sep_strength=0.5, no firing
         let mut agent = NaiveAgent::new(1.0, 1.0);
-        let mut cfg = crate::config::Config::default();
+        let mut cfg = Config::default();
+        cfg.distance_mode = DistanceMode::Toroidal;
         cfg.sep_strength = 0.5;
         cfg.attack_range = 0.0;
         let positions = vec![Vec2 { x: 995.0, y: 0.0 }, Vec2 { x: 5.0, y: 0.0 }];
