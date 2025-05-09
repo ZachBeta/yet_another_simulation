@@ -1,4 +1,6 @@
 # WIP
+* looks like toroidal got hallucinated back into default, let's fix that
+
 * are ships not detecting distance across the wrap around boundaries? they all seem to converge into the middle, rather than loop around, there also might be some flickering of rendering when it's on the boundary, we might need to have some kind of buffer on the edges
     * this toroidal vs euclidian + walls issue somewhat works, but the ship agent AI seems to choke on both in different ways
     * also I keep wanting to be explicit that the module AI should be called ship agent or something similar to clearly communicate that it's a decision making module for a ship

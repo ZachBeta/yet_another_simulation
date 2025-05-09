@@ -27,7 +27,7 @@ mod ai;
 mod brain;
 pub use brain::Brain;
 
-use crate::ai::{NaiveAgent, NaiveBrain};
+use crate::ai::{NaiveAgent, NaiveBrain, NNAgent};
 
 /// Number of floats per agent in the flat buffer
 const AGENT_STRIDE: usize = 6;
@@ -90,41 +90,11 @@ impl Simulation {
             config: Config::default(),
             agents_impl: Vec::new(),
         };
-        let counts = [orange, yellow, green, blue];
-        // spawn agents per team in quadrants: 0=orange TL,1=yellow TR,2=green BL,3=blue BR
-        for (team_id, &count) in counts.iter().enumerate() {
-            for _ in 0..count {
-                // x coordinate
-                let half_w = width as f32 / 2.0;
-                let half_h = height as f32 / 2.0;
-                let rx = random_coef();
-                let x = if team_id % 2 == 0 {
-                    rx * half_w
-                } else {
-                    half_w + rx * half_w
-                };
-                // y coordinate
-                let ry = random_coef();
-                let y = if team_id < 2 {
-                    ry * half_h
-                } else {
-                    half_h + ry * half_h
-                };
-                sim.agents_data.push(x);
-                sim.agents_data.push(y);
-                sim.agents_data.push(team_id as f32);
-                sim.agents_data.push(100.0);
-                // initialize shield and last_hit
-                sim.agents_data.push(sim.config.max_shield);
-                sim.agents_data.push(0.0);
-            }
-        }
-        // Register default NaiveAgent for each ship
-        let total_agents = sim.agents_data.len() / AGENT_STRIDE;
-        for _ in 0..total_agents {
-            let naive = NaiveAgent::new(1.2, 0.8);
-            sim.register_agent(Box::new(NaiveBrain(naive)));
-        }
+        sim.spawn_quadrants(
+            [orange, yellow, green, blue],
+            &[|| Box::new(NaiveBrain(NaiveAgent::new(1.2, 0.8)))],
+            &[0, 0, 0, 0],
+        );
         sim
     }
 
@@ -140,18 +110,31 @@ impl Simulation {
         // advance global tick
         self.tick_count += 1;
 
-        // Phase 2: Agent Decision (using Brain)
-        let rays = self.config.scan_rays;
-        let max_dist = self.config.scan_max_dist;
+        // Phase 2: Agent Decision (using Brain over full WorldView)
         let count = self.agents_impl.len();
         for idx in 0..count {
             // Skip dead agents
             let health = self.agents_data[idx * AGENT_STRIDE + IDX_HEALTH];
             if health <= 0.0 { continue; }
-            // Run sensor scan and decision
-            let inputs = self.scan(idx, rays, max_dist);
-            let brain = &mut self.agents_impl[idx];
-            let action = brain.think(&inputs);
+            // Build full WorldView
+            let (positions, teams, healths, shields, wreck_positions, wreck_pools, w, h) = self.build_global_view();
+            let view = WorldView {
+                self_idx: idx,
+                self_pos: positions[idx],
+                self_team: teams[idx],
+                self_health: healths[idx],
+                self_shield: shields[idx],
+                positions: &positions,
+                teams: &teams,
+                healths: &healths,
+                shields: &shields,
+                wreck_positions: &wreck_positions,
+                wreck_pools: &wreck_pools,
+                world_width: w,
+                world_height: h,
+            };
+            // Decision via Brain
+            let action = self.agents_impl[idx].think(&view);
             self.commands.insert(idx, action.clone());
             match action {
                 Action::Thrust(_) => self.thrust_count += 1,
@@ -250,6 +233,45 @@ impl Simulation {
             "euclidean" => DistanceMode::Euclidean,
             _ => DistanceMode::Toroidal,
         };
+    }
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
+impl Simulation {
+    /// Create an empty Simulation without agents
+    pub fn empty(width: u32, height: u32) -> Simulation {
+        Simulation {
+            width,
+            height,
+            agents_data: Vec::new(),
+            bullets_data: Vec::new(),
+            wrecks_data: Vec::new(),
+            commands: HashMap::new(),
+            thrust_count: 0,
+            fire_count: 0,
+            idle_count: 0,
+            loot_count: 0,
+            tick_count: 0,
+            hits_data: Vec::new(),
+            config: Config::default(),
+            agents_impl: Vec::new(),
+        }
+    }
+
+    /// Head-to-head NN vs Naive duel constructor
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen(static_method_of = Simulation))]
+    pub fn new_nn_vs_naive(
+        width: u32, height: u32,
+        orange: u32, yellow: u32,
+        green: u32,  blue: u32,
+    ) -> Simulation {
+        let mut sim = Simulation::empty(width, height);
+        sim.spawn_quadrants(
+            [orange, yellow, green, blue],
+            &[nn_factory, naive_factory],
+            &[0,1,1,0], // TL&BR=NN, TR&BL=Naive
+        );
+        sim
     }
 }
 
@@ -375,6 +397,34 @@ impl Simulation {
         }
         out
     }
+
+    fn spawn_quadrants(
+        &mut self,
+        counts: [u32;4],                     // [orange,yellow,green,blue]
+        factories: &[fn() -> Box<dyn Brain>], // Brain factory per side
+        assignment: &[usize;4],               // map TL,TR,BL,BR → side index
+    ) {
+        let half_w = self.width as f32 / 2.0;
+        let half_h = self.height as f32 / 2.0;
+        for (q, &count) in counts.iter().enumerate() {
+            for _ in 0..count {
+                let rx = random_coef();
+                let x = if q % 2 == 0 { rx * half_w } else { half_w + rx * half_w };
+                let ry = random_coef();
+                let y = if q < 2 { ry * half_h } else { half_h + ry * half_h };
+                self.agents_data.push(x);
+                self.agents_data.push(y);
+                self.agents_data.push(q as f32);
+                self.agents_data.push(100.0);
+                self.agents_data.push(self.config.max_shield);
+                self.agents_data.push(0.0);
+                let idx = assignment[q];
+                let brain = factories[idx]();
+                self.register_agent(brain);
+            }
+        }
+    }
+
 }
 
 #[cfg(test)]
@@ -528,3 +578,6 @@ mod integration_tests {
         assert_eq!(sim.wrecks_data[IDX_WRECK_POOL], 20.0 - expected);
     }
 }
+
+fn nn_factory() -> Box<dyn Brain> { Box::new(NNAgent) }
+fn naive_factory() -> Box<dyn Brain> { Box::new(NaiveBrain(NaiveAgent::new(1.2, 0.8))) }

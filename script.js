@@ -208,17 +208,25 @@ async function initSim() {
   const y = Number(yellowInput.value);
   const g = Number(greenInput.value);
   const b = Number(blueInput.value);
-  sim = new Simulation(canvas.width, canvas.height, o, y, g, b);
+  sim = Simulation.new_nn_vs_naive(canvas.width, canvas.height, o, y, g, b);
   draw(); updateStats();
   // Mode control binding
-  const modeSelect = document.getElementById('modeSelect');
-  const modeDisplay = document.getElementById('modeDisplay');
+  /** @type {HTMLSelectElement} */
+  const modeSelect = /** @type {HTMLSelectElement} */ (document.getElementById('modeSelect'));
+  /** @type {HTMLElement} */
+  const modeDisplay = /** @type {HTMLElement} */ (document.getElementById('modeDisplay'));
   modeSelect.value = sim.is_toroidal() ? 'toroidal' : 'euclidean';
   modeDisplay.textContent = 'Mode: ' + modeSelect.options[modeSelect.selectedIndex].text;
   modeSelect.onchange = () => {
     sim.set_distance_mode(modeSelect.value);
     modeDisplay.textContent = 'Mode: ' + modeSelect.options[modeSelect.selectedIndex].text;
   };
+  // Populate brain legend immediately
+  const brainByTeam = ['NN Agent','Naive FSM','Naive FSM','NN Agent'];
+  const legend = document.getElementById('brainLegend');
+  legend.innerHTML = brainByTeam
+    .map((name,i) => `<span style="color:${TEAM_COLORS[i]}">●</span> ${name}`)
+    .join('<br>');
 }
 
 initSim();

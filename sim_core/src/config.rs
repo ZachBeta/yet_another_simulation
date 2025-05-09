@@ -75,7 +75,7 @@ impl Default for Config {
             loot_init_ratio:   0.5,
             health_flee_ratio:   0.2,
             health_engage_ratio: 0.5,
-            distance_mode: DistanceMode::Toroidal,
+            distance_mode: DistanceMode::Euclidean,
             scan_rays: 32,
             scan_max_dist: 1000.0,
             nearest_k_enemies: 8,

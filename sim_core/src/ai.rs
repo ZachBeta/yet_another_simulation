@@ -1,5 +1,5 @@
-use crate::config::{Config, DistanceMode};
 use crate::domain::{WorldView, Agent, Action, Vec2, Weapon};
+use crate::config::Config;
 use crate::brain::Brain;
 
 // AI state machine states
@@ -22,7 +22,7 @@ impl NaiveAgent {
     }
 
     /// Update AI state based on view & config
-    fn update_state(&mut self, view: &WorldView, cfg: &Config) {
+    fn update_state(&mut self, view: &WorldView, cfg: &crate::config::Config) {
         let flee_th = cfg.health_max * cfg.health_flee_ratio;
         let engage_th = cfg.health_max * cfg.health_engage_ratio;
 
@@ -65,7 +65,7 @@ impl NaiveAgent {
     }
 
     /// Decide on an Action based on current state and view
-    fn decide_action(&mut self, view: &WorldView, cfg: &Config) -> Action {
+    fn decide_action(&mut self, view: &WorldView, cfg: &crate::config::Config) -> Action {
         match &self.state {
             AgentState::Idle => Action::Idle,
 
@@ -134,7 +134,7 @@ impl NaiveAgent {
 
 impl Agent for NaiveAgent {
     fn think(&mut self, view: &WorldView) -> Action {
-        let cfg = Config::default();
+        let cfg = crate::config::Config::default();
         self.update_state(view, &cfg);
         self.decide_action(view, &cfg)
     }
@@ -144,38 +144,32 @@ impl Agent for NaiveAgent {
 pub struct NaiveBrain(pub NaiveAgent);
 
 impl Brain for NaiveBrain {
-    fn think(&mut self, _inputs: &[f32]) -> Action {
-        // TODO: reconstruct WorldView from scan inputs; for now, delegate to NaiveAgent (stub)
-        Action::Idle
+    fn think(&mut self, view: &WorldView) -> Action {
+        self.0.think(view)
     }
 }
 
-/// Neural-network agent stub implementing Brain
+/// Neural-network agent stub implementing Brain using full WorldView
 pub struct NNAgent;
 
 impl Brain for NNAgent {
-    fn think(&mut self, inputs: &[f32]) -> Action {
-        // Simple cohesion: average vector to nearest allies
+    fn think(&mut self, view: &WorldView) -> Action {
         let cfg = Config::default();
-        let ke = cfg.nearest_k_enemies;
-        let ka = cfg.nearest_k_allies;
-        let start = 2 + 4 * ke;
+        // Simple cohesion: average vector to nearest allies
         let mut sum = Vec2 { x: 0.0, y: 0.0 };
         let mut count = 0;
-        for i in 0..ka {
-            let idx = start + 4 * i;
-            let dx = inputs[idx];
-            let dy = inputs[idx + 1];
-            if dx != 0.0 || dy != 0.0 {
-                sum.x += dx;
-                sum.y += dy;
+        for (j, &pos) in view.positions.iter().enumerate() {
+            if j != view.self_idx && view.healths[j] > 0.0 && view.teams[j] == view.self_team {
+                let d = view.delta(pos, &cfg);
+                sum.x += d.x;
+                sum.y += d.y;
                 count += 1;
             }
         }
         if count == 0 {
             Action::Idle
         } else {
-            let v = Vec2 { x: sum.x / count as f32, y: sum.y / count as f32 }.normalize();
+            let v = sum.normalize();
             Action::Thrust(v)
         }
     }
@@ -183,13 +177,13 @@ impl Brain for NNAgent {
 
 // Unified distance helpers based on config
 impl<'a> WorldView<'a> {
-    pub fn delta(&self, pos: Vec2, cfg: &Config) -> Vec2 {
+    pub fn delta(&self, pos: Vec2, cfg: &crate::config::Config) -> Vec2 {
         match cfg.distance_mode {
-            DistanceMode::Toroidal => self.self_pos.torus_delta(pos, self.world_width, self.world_height),
-            DistanceMode::Euclidean => Vec2 { x: pos.x - self.self_pos.x, y: pos.y - self.self_pos.y },
+            crate::config::DistanceMode::Toroidal => self.self_pos.torus_delta(pos, self.world_width, self.world_height),
+            crate::config::DistanceMode::Euclidean => Vec2 { x: pos.x - self.self_pos.x, y: pos.y - self.self_pos.y },
         }
     }
-    pub fn dist2(&self, pos: Vec2, cfg: &Config) -> f32 {
+    pub fn dist2(&self, pos: Vec2, cfg: &crate::config::Config) -> f32 {
         let d = self.delta(pos, cfg);
         d.x * d.x + d.y * d.y
     }
@@ -358,7 +352,7 @@ mod tests {
             self_idx:    0,
             self_pos:    positions[0],
             self_team:   0,
-            self_health: healths[0],
+            self_health: 100.0,
             self_shield: shields[0],
             positions:   &positions,
             teams:       &teams,
@@ -381,7 +375,7 @@ mod tests {
     #[test]
     fn wrap_pursuit_no_separation() {
         let mut agent = NaiveAgent::new(1.0, 1.0);
-        let mut cfg = Config::default();
+        let mut cfg = crate::config::Config::default();
         cfg.sep_strength = 0.0;
         cfg.attack_range = 0.0;
         let positions = vec![Vec2 { x: 995.0, y: 0.0 }, Vec2 { x: 5.0, y: 0.0 }];
@@ -392,7 +386,7 @@ mod tests {
             self_idx:    0,
             self_pos:    positions[0],
             self_team:   0,
-            self_health: healths[0],
+            self_health: 100.0,
             self_shield: shields[0],
             positions:   &positions,
             teams:       &teams,
@@ -418,7 +412,7 @@ mod tests {
     fn separation_only_repulsion() {
         // Given: pursuit disabled (speed=0), sep_strength=1, no firing
         let mut agent = NaiveAgent::new(0.0, 1.0);
-        let mut cfg = Config::default();
+        let mut cfg = crate::config::Config::default();
         cfg.sep_strength = 1.0;
         cfg.attack_range = 0.0;
         let positions = vec![Vec2 { x: 995.0, y: 0.0 }, Vec2 { x: 5.0, y: 0.0 }];
@@ -454,7 +448,7 @@ mod tests {
     fn pursuit_and_separation_mixing() {
         // Given: speed=1, sep_strength=0.5, no firing
         let mut agent = NaiveAgent::new(1.0, 1.0);
-        let mut cfg = Config::default();
+        let mut cfg = crate::config::Config::default();
         cfg.sep_strength = 0.5;
         cfg.attack_range = 0.0;
         let positions = vec![Vec2 { x: 995.0, y: 0.0 }, Vec2 { x: 5.0, y: 0.0 }];
