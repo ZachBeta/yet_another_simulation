@@ -84,3 +84,51 @@ impl Default for Config {
         }
     }
 }
+
+/// Configuration for NEAT evolutionary training
+#[derive(Clone)]
+pub struct EvolutionConfig {
+    /// Total genome population size per generation
+    pub pop_size: usize,
+    /// Number of teams in each match
+    pub num_teams: usize,
+    /// Number of agents per team
+    pub team_size: usize,
+    /// Maximum ticks (turns) per match
+    pub max_ticks: usize,
+    /// Stop match when subject wins or is eliminated
+    pub early_exit: bool,
+    /// Number of sampled opponents per genome per generation
+    pub tournament_k: usize,
+    /// Hall-of-Fame capacity (past champions)
+    pub hof_size: usize,
+    /// Fraction of matches vs Hall-of-Fame opponents
+    pub hof_match_rate: f32,
+    /// Species compatibility threshold
+    pub compatibility_threshold: f32,
+    /// Crossover probability between genomes
+    pub crossover_rate: f32,
+    /// Mutation rate for adding new nodes
+    pub mutation_add_node_rate: f32,
+    /// Mutation rate for adding new connections
+    pub mutation_add_conn_rate: f32,
+}
+
+impl Default for EvolutionConfig {
+    fn default() -> Self {
+        EvolutionConfig {
+            pop_size: 30,
+            num_teams: 4,
+            team_size: 3,
+            max_ticks: 1000,
+            early_exit: true,
+            tournament_k: 5,
+            hof_size: 5,
+            hof_match_rate: 0.1,
+            compatibility_threshold: 3.0,
+            crossover_rate: 0.75,
+            mutation_add_node_rate: 0.3,
+            mutation_add_conn_rate: 0.5,
+        }
+    }
+}

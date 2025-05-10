@@ -16,8 +16,9 @@ fn random_coef() -> f32 {
 mod domain;
 use domain::{Action, Weapon, Vec2, Agent, WorldView};
 
-mod config;
-use config::{Config, DistanceMode};
+pub mod config;
+pub use config::Config;
+pub use config::DistanceMode;
 
 mod movement;
 mod combat;
@@ -26,6 +27,7 @@ mod loot;
 mod ai;
 mod brain;
 pub use brain::Brain;
+pub mod neat;
 
 use crate::ai::{NaiveAgent, NaiveBrain, NNAgent};
 
@@ -142,7 +144,6 @@ impl Simulation {
                 Action::Idle => self.idle_count += 1,
                 Action::Loot => self.loot_count += 1,
                 Action::Fire { .. } => self.fire_count += 1,
-                _ => {},
             }
         }
 
@@ -257,6 +258,44 @@ impl Simulation {
             config: Config::default(),
             agents_impl: Vec::new(),
         }
+    }
+
+    /// Construct a simulation with custom agents (dyn Brain + team assignments)
+    pub fn with_brains(
+        width: u32,
+        height: u32,
+        config: Config,
+        agents: Vec<(Box<dyn Brain>, u32)>,
+    ) -> Simulation {
+        let mut sim = Simulation {
+            width,
+            height,
+            agents_data: Vec::new(),
+            bullets_data: Vec::new(),
+            wrecks_data: Vec::new(),
+            commands: HashMap::new(),
+            thrust_count: 0,
+            fire_count: 0,
+            idle_count: 0,
+            loot_count: 0,
+            tick_count: 0,
+            hits_data: Vec::new(),
+            config,
+            agents_impl: Vec::new(),
+        };
+        // Reserve capacity for flat agent state
+        sim.agents_data.reserve(agents.len() * AGENT_STRIDE);
+        // Populate agents_data and agents_impl boxes
+        for (brain, team) in agents {
+            let x = width as f32 * 0.5;
+            let y = height as f32 * 0.5;
+            let health = sim.config.health_max;
+            let shield = sim.config.max_shield;
+            let last_hit = sim.tick_count as f32;
+            sim.agents_data.extend_from_slice(&[x, y, team as f32, health, shield, last_hit]);
+            sim.agents_impl.push(brain);
+        }
+        sim
     }
 
     /// Head-to-head NN vs Naive duel constructor
