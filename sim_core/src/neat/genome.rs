@@ -1,6 +1,8 @@
 use crate::config::Config as SimConfig;
 use rand::{thread_rng, Rng, seq::SliceRandom};
 use std::collections::HashMap;
+use super::config::EvolutionConfig;
+use super::onnx_exporter;
 
 /// A node in the network
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -35,8 +37,6 @@ pub struct Genome {
     /// Accumulated fitness of this genome
     pub fitness: f32,
 }
-
-use super::config::EvolutionConfig;
 
 impl Genome {
     /// Create an initial minimal genome
@@ -142,8 +142,8 @@ impl Genome {
         }
         child.nodes = node_map.values().cloned().collect();
         // Merge connections by innovation
-        let mut conn_map_f: HashMap<usize, &ConnGene> = fitter.conns.iter().map(|c| (c.innovation, c)).collect();
-        let mut conn_map_w: HashMap<usize, &ConnGene> = weaker.conns.iter().map(|c| (c.innovation, c)).collect();
+        let conn_map_f: HashMap<usize, &ConnGene> = fitter.conns.iter().map(|c| (c.innovation, c)).collect();
+        let conn_map_w: HashMap<usize, &ConnGene> = weaker.conns.iter().map(|c| (c.innovation, c)).collect();
         let mut all_innovs: Vec<usize> = conn_map_f.keys().cloned().chain(conn_map_w.keys().cloned()).collect();
         all_innovs.sort_unstable();
         all_innovs.dedup();
@@ -195,12 +195,79 @@ impl Genome {
         }
         outputs
     }
+
+    /// Decompose into strictly-layered structure: input->hidden?->output
+    pub fn layers(&self) -> Vec<Layer> {
+        // Collect node IDs by type
+        let mut input_ids = self.nodes.iter().filter(|n| n.node_type == NodeType::Input).map(|n| n.id).collect::<Vec<_>>();
+        let mut hidden_ids = self.nodes.iter().filter(|n| n.node_type == NodeType::Hidden).map(|n| n.id).collect::<Vec<_>>();
+        let mut output_ids = self.nodes.iter().filter(|n| n.node_type == NodeType::Output).map(|n| n.id).collect::<Vec<_>>();
+        input_ids.sort_unstable(); hidden_ids.sort_unstable(); output_ids.sort_unstable();
+        let mut layers = Vec::new();
+        if !hidden_ids.is_empty() {
+            layers.push(Layer::new(&input_ids, &hidden_ids, &self.conns));
+            layers.push(Layer::new(&hidden_ids, &output_ids, &self.conns));
+        } else {
+            layers.push(Layer::new(&input_ids, &output_ids, &self.conns));
+        }
+        layers
+    }
+
+    /// Number of inputs (first layer) for ONNX export
+    pub fn input_size(&self) -> usize {
+        self.layers().first().map(|l| l.input_size()).unwrap_or(0)
+    }
+    /// Number of outputs (last layer) for ONNX export
+    pub fn output_size(&self) -> usize {
+        self.layers().last().map(|l| l.output_size()).unwrap_or(0)
+    }
+
+    /// Export this genome to ONNX bytes
+    pub fn to_onnx(&self) -> Vec<u8> {
+        onnx_exporter::export_genome(self)
+    }
+} // end impl Genome
+
+/// A strictly-layered feed-forward network layer
+pub struct Layer {
+    pub input_ids: Vec<usize>,
+    pub output_ids: Vec<usize>,
+    pub weights: Vec<f32>,  // row-major [out_dim, in_dim]
+    pub biases: Vec<f32>,   // len = out_dim
+}
+
+impl Layer {
+    /// Build a layer from node id lists and connections
+    pub fn new(input_ids: &[usize], output_ids: &[usize], conns: &[ConnGene]) -> Self {
+        let in_dim = input_ids.len();
+        let out_dim = output_ids.len();
+        let mut weights = vec![0.0f32; in_dim * out_dim];
+        let biases = vec![0.0f32; out_dim]; // NEAT has no bias nodes
+        for c in conns.iter().filter(|c| c.enabled
+            && input_ids.contains(&c.in_node)
+            && output_ids.contains(&c.out_node)) {
+            let i = output_ids.iter().position(|&id| id == c.out_node).unwrap();
+            let j = input_ids.iter().position(|&id| id == c.in_node).unwrap();
+            weights[i * in_dim + j] = c.weight;
+        }
+        Layer { input_ids: input_ids.to_vec(), output_ids: output_ids.to_vec(), weights, biases }
+    }
+    pub fn input_size(&self) -> usize { self.input_ids.len() }
+    pub fn output_size(&self) -> usize { self.output_ids.len() }
+    pub fn weight_bytes(&self) -> Vec<u8> {
+        self.weights.iter().flat_map(|f| f.to_le_bytes()).collect()
+    }
+    pub fn bias_bytes(&self) -> Vec<u8> {
+        self.biases.iter().flat_map(|f| f.to_le_bytes()).collect()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::config::Config as SimConfig;
+    use prost::Message;
+    use crate::neat::onnx_minimal::ModelProto;
 
     #[test]
     fn test_mutate_add_connection_and_node() {
@@ -215,5 +282,68 @@ mod tests {
         genome.mutate(&evo_cfg);
         assert!(genome.nodes.len() > initial_nodes, "Node count did not increase");
         assert!(genome.conns.len() > initial_conns, "Conn count did not increase");
+    }
+
+    #[test]
+    fn test_layers_direct() {
+        let genome = Genome {
+            nodes: vec![
+                NodeGene { id: 0, node_type: NodeType::Input },
+                NodeGene { id: 1, node_type: NodeType::Input },
+                NodeGene { id: 2, node_type: NodeType::Output },
+            ],
+            conns: vec![
+                ConnGene { in_node: 0, out_node: 2, weight: 1.23, enabled: true, innovation: 0 },
+                ConnGene { in_node: 1, out_node: 2, weight: 4.56, enabled: true, innovation: 1 },
+            ],
+            fitness: 0.0,
+        };
+        let layers = genome.layers();
+        assert_eq!(layers.len(), 1);
+        let layer = &layers[0];
+        assert_eq!(layer.input_ids, vec![0, 1]);
+        assert_eq!(layer.output_ids, vec![2]);
+        assert_eq!(layer.weights, vec![1.23, 4.56]);
+        assert_eq!(layer.biases, vec![0.0]);
+    }
+
+    #[test]
+    fn test_layers_with_hidden() {
+        let genome = Genome {
+            nodes: vec![
+                NodeGene { id: 0, node_type: NodeType::Input },
+                NodeGene { id: 1, node_type: NodeType::Hidden },
+                NodeGene { id: 2, node_type: NodeType::Output },
+            ],
+            conns: vec![
+                ConnGene { in_node: 0, out_node: 1, weight: 7.89, enabled: true, innovation: 0 },
+                ConnGene { in_node: 1, out_node: 2, weight: 0.12, enabled: true, innovation: 1 },
+            ],
+            fitness: 0.0,
+        };
+        let layers = genome.layers();
+        assert_eq!(layers.len(), 2);
+        let l0 = &layers[0];
+        assert_eq!(l0.input_ids, vec![0]);
+        assert_eq!(l0.output_ids, vec![1]);
+        assert_eq!(l0.weights, vec![7.89]);
+        assert_eq!(l0.biases, vec![0.0]);
+        let l1 = &layers[1];
+        assert_eq!(l1.input_ids, vec![1]);
+        assert_eq!(l1.output_ids, vec![2]);
+        assert_eq!(l1.weights, vec![0.12]);
+        assert_eq!(l1.biases, vec![0.0]);
+    }
+
+    #[test]
+    fn test_export_to_onnx_simple() {
+        let mut genome = Genome::new();
+        let sim_cfg = SimConfig::default();
+        let evo_cfg = EvolutionConfig::default();
+        genome.initialize(&sim_cfg, &evo_cfg);
+        let bytes = genome.to_onnx();
+        assert!(!bytes.is_empty(), "ONNX output should not be empty");
+        let model = ModelProto::decode(bytes.as_slice()).unwrap();
+        assert_eq!(model.graph.unwrap().name, "neat_model");
     }
 }

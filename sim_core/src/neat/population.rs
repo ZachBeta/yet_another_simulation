@@ -6,6 +6,7 @@ use super::runner::run_match;
 use super::brain::NeatBrain;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
+use rayon::prelude::*;
 
 /// A population of genomes and a hall-of-fame
 pub struct Population {
@@ -24,47 +25,45 @@ impl Population {
 
     /// Evaluate each genome's fitness by running matches
     pub fn evaluate(&mut self, sim_cfg: &Config, evo_cfg: &EvolutionConfig) {
-        // Initialize genomes with minimal network topology
+        // Initialize genomes & reset fitness
         for genome in &mut self.genomes {
             if genome.nodes.is_empty() {
                 genome.initialize(sim_cfg, evo_cfg);
             }
-        }
-        // reset fitness
-        for genome in &mut self.genomes {
             genome.fitness = 0.0;
         }
-        let mut rng = thread_rng();
+        // Snapshot for opponent sampling
+        let snapshot = self.genomes.clone();
         let num_others = evo_cfg.num_teams - 1;
-        for i in 0..self.genomes.len() {
+        // Parallel evaluation using Rayon
+        self.genomes.par_iter_mut().enumerate().for_each(|(i, genome)| {
+            let mut rng = thread_rng();
             for _ in 0..evo_cfg.tournament_k {
-                // sample opponents (excluding subject)
-                let mut pool: Vec<usize> = (0..self.genomes.len()).filter(|&j| j != i).collect();
+                // sample opponents
+                let mut pool: Vec<usize> = (0..snapshot.len()).filter(|&j| j != i).collect();
                 pool.shuffle(&mut rng);
                 let opponents = &pool[..num_others];
                 // build agents vector
                 let mut agents: Vec<(Box<dyn Brain>, u32)> = Vec::new();
-                // subject team 0
+                // subject
                 for _ in 0..evo_cfg.team_size {
-                    let g = self.genomes[i].clone();
-                    agents.push((Box::new(NeatBrain(g)), 0));
+                    agents.push((Box::new(NeatBrain(genome.clone())), 0));
                 }
-                // other teams
+                // opponents
                 for (idx, &opp) in opponents.iter().enumerate() {
                     let team_id = (idx + 1) as u32;
                     for _ in 0..evo_cfg.team_size {
-                        let g = self.genomes[opp].clone();
-                        agents.push((Box::new(NeatBrain(g)), team_id));
+                        agents.push((Box::new(NeatBrain(snapshot[opp].clone())), team_id));
                     }
                 }
                 let stats = run_match(sim_cfg, evo_cfg, agents);
                 let fit = evo_cfg.fitness_fn.compute(&stats);
-                self.genomes[i].fitness += fit;
+                genome.fitness += fit;
             }
             // average fitness
-            self.genomes[i].fitness /= evo_cfg.tournament_k as f32;
-        }
-        // update hall-of-fame with top performers
+            genome.fitness /= evo_cfg.tournament_k as f32;
+        });
+        // update hall-of-fame
         self.genomes.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap());
         self.hof = self.genomes.iter().take(evo_cfg.hof_size).cloned().collect();
     }

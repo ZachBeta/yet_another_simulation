@@ -1,5 +1,6 @@
 // Entry script: WASM-driven render loop
-import init, { Simulation } from './wasm/pkg/sim_core.js';
+import init, { WasmSimulation } from './wasm/pkg/sim_core.js';
+const Simulation = WasmSimulation;
 
 /** @type {HTMLCanvasElement} */
 const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('battleCanvas'));
@@ -63,8 +64,8 @@ function updateStats() {
   const counts = [0,0,0,0];
   let sumHealth = 0;
   let aliveCount = 0;
-  const ptr = sim.agents_ptr() >>> 2;
-  const len = sim.agents_len();
+  const ptr = sim.agentsPtr() >>> 2;
+  const len = sim.agentsLen();
   for (let i = ptr; i < ptr + len; i += 6) {
     const teamId = mem[i+2] | 0;
     const health = mem[i+3];
@@ -79,18 +80,18 @@ function updateStats() {
   statsElement.textContent =
     `Orange: ${counts[0]} | Yellow: ${counts[1]} | Green: ${counts[2]} | Blue: ${counts[3]}`;
   // Update bullet and wreck counts
-  const bulletCount = sim.bullets_len() / 4;
-  const wreckCount = sim.wrecks_len() / 3;
+  const bulletCount = sim.bulletsLen() / 4;
+  const wreckCount = sim.wrecksLen() / 3;
   document.getElementById('bulletCount').textContent = `Bullets: ${bulletCount}`;
   document.getElementById('wreckCount').textContent = `Wrecks: ${wreckCount}`;
   // Update average health
   const avgHealth = aliveCount > 0 ? (sumHealth / aliveCount).toFixed(1) : '0.0';
   document.getElementById('healthStats').textContent = `Avg Health: ${avgHealth}`;
   // Update command counts
-  document.getElementById('thrustCount').textContent = `Thrust: ${sim.thrust_count()}`;
-  document.getElementById('fireCount').textContent = `Fire: ${sim.fire_count()}`;
-  document.getElementById('idleCount').textContent = `Idle: ${sim.idle_count()}`;
-  document.getElementById('lootCount').textContent = `Loot: ${sim.loot_count()}`;
+  document.getElementById('thrustCount').textContent = `Thrust: ${sim.thrustCount()}`;
+  document.getElementById('fireCount').textContent = `Fire: ${sim.fireCount()}`;
+  document.getElementById('idleCount').textContent = `Idle: ${sim.idleCount()}`;
+  document.getElementById('lootCount').textContent = `Loot: ${sim.lootCount()}`;
 }
 
 function draw() {
@@ -108,7 +109,7 @@ function draw() {
     if (x > W - buf && y > H - buf) pos.push([x - W, y - H]);
     return pos;
   }
-  const isToroidal = sim.is_toroidal();
+  const isToroidal = sim.isToroidal();
   function getPositions(x, y) {
     return isToroidal ? getWrapPositions(x, y) : [[x, y]];
   }
@@ -117,9 +118,9 @@ function draw() {
   // HP & Shield bar parameters
   const t = 3, g = 3, R = 4;
   const maxHealth = 100;
-  const maxShield = sim.max_shield();
-  const ptr = sim.agents_ptr() >>> 2;
-  const len = sim.agents_len();
+  const maxShield = sim.maxShield();
+  const ptr = sim.agentsPtr() >>> 2;
+  const len = sim.agentsLen();
   // compute ring radii so they sit outside the ship hull
   const healthRadius = R + t/2 + g;
   const shieldRadius = healthRadius + t + g;
@@ -135,8 +136,8 @@ function draw() {
                'rgba(255,0,0,0.5)', '#00ffff');
       drawRing(ctx, xx, yy, healthRadius, t, health / maxHealth,
                'rgba(255,0,0,0.5)', '#ffffff');
-      const attackR = sim.attack_range();
-      const sepR = sim.sep_range();
+      const attackR = sim.attackRange();
+      const sepR = sim.sepRange();
       ctx.fillStyle = hexToRgba(TEAM_COLORS[teamId], 0.05);
       ctx.beginPath();
       ctx.arc(xx, yy, attackR, 0, 2*Math.PI);
@@ -148,9 +149,9 @@ function draw() {
     }
   }
   // Draw wrecks
-  const wptr = sim.wrecks_ptr() >>> 2;
-  const wlen = sim.wrecks_len();
-  const initPool = sim.health_max() * sim.loot_init_ratio();
+  const wptr = sim.wrecksPtr() >>> 2;
+  const wlen = sim.wrecksLen();
+  const initPool = sim.healthMax() * sim.lootInitRatio();
   for (let j = wptr; j < wptr + wlen; j += 3) {
     const wx = mem[j], wy = mem[j+1], pool = mem[j+2];
     for (const [xx, yy] of getPositions(wx, wy)) {
@@ -163,8 +164,8 @@ function draw() {
     }
   }
   // Draw hitscan vectors
-  const hitsPtr = sim.hits_ptr() >>> 2;
-  const hitsLen = sim.hits_len();
+  const hitsPtr = sim.hitsPtr() >>> 2;
+  const hitsLen = sim.hitsLen();
   ctx.strokeStyle = 'rgba(255,0,0,0.5)';
   for (let dx of xOffsets) {
     for (let dy of yOffsets) {
@@ -215,10 +216,10 @@ async function initSim() {
   const modeSelect = /** @type {HTMLSelectElement} */ (document.getElementById('modeSelect'));
   /** @type {HTMLElement} */
   const modeDisplay = /** @type {HTMLElement} */ (document.getElementById('modeDisplay'));
-  modeSelect.value = sim.is_toroidal() ? 'toroidal' : 'euclidean';
+  modeSelect.value = sim.isToroidal() ? 'toroidal' : 'euclidean';
   modeDisplay.textContent = 'Mode: ' + modeSelect.options[modeSelect.selectedIndex].text;
   modeSelect.onchange = () => {
-    sim.set_distance_mode(modeSelect.value);
+    sim.setDistanceMode(modeSelect.value);
     modeDisplay.textContent = 'Mode: ' + modeSelect.options[modeSelect.selectedIndex].text;
   };
   // Populate brain legend immediately

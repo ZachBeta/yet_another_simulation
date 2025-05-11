@@ -82,7 +82,7 @@ mod tests {
     use super::*;
     use crate::domain::{Action, Weapon};
     use crate::Simulation;
-    use crate::{AGENT_STRIDE, IDX_X, IDX_Y, IDX_TEAM, IDX_HEALTH, IDX_SHIELD};
+    use crate::{AGENT_STRIDE, IDX_HEALTH, IDX_SHIELD};
 
     /// Helper to create a simulation with custom agents
     fn make_sim(data: &[(f32, f32, usize, f32)]) -> Simulation {

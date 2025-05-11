@@ -1,4 +1,3 @@
-use crate::config::Config as SimConfig;
 use super::runner::MatchStats;
 
 /// NEAT training parameters and schedule

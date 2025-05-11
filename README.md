@@ -29,6 +29,14 @@ npm start
 
 Open [http://localhost:8000](http://localhost:8000) in your browser.
 
+## Testing
+
+```bash
+npm test           # Run JS tests via Jest
+cargo test         # Run Rust unit tests
+wasm-pack test --headless --chrome   # Run WASM binding tests
+```
+
 ## Current State
 
 - Four teams (orange, yellow, green, blue) battle each other in their quadrants.

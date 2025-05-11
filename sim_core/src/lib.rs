@@ -1,7 +1,11 @@
+#![allow(non_camel_case_types)]
+#![allow(unreachable_patterns)]
+#![allow(dead_code)]
 // Core simulation in Rust with WASM bindings
-use wasm_bindgen::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use js_sys::Math;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
 use std::collections::HashMap;
 
 #[cfg(target_arch = "wasm32")]
@@ -14,7 +18,7 @@ fn random_coef() -> f32 {
 }
 
 mod domain;
-use domain::{Action, Weapon, Vec2, Agent, WorldView};
+use domain::{Action, Vec2, WorldView};
 
 pub mod config;
 pub use config::Config;
@@ -49,7 +53,6 @@ const IDX_WRECK_X: usize    = 0;
 const IDX_WRECK_Y: usize    = 1;
 const IDX_WRECK_POOL: usize = 2;
 
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 pub struct Simulation {
     width: u32,
     height: u32,
@@ -71,9 +74,8 @@ pub struct Simulation {
     agents_impl: Vec<Box<dyn Brain>>,
 }
 
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 impl Simulation {
-    #[cfg_attr(target_arch = "wasm32", wasm_bindgen(constructor))]
+    /// Constructor for a new simulation
     pub fn new(width: u32, height: u32, orange: u32, yellow: u32, green: u32, blue: u32) -> Simulation {
         // init empty state
         let mut sim = Simulation {
@@ -195,7 +197,6 @@ impl Simulation {
     }
 }
 
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 impl Simulation {
     /// Number of Thrust commands executed this tick
     pub fn thrust_count(&self) -> u32 { self.thrust_count }
@@ -238,7 +239,6 @@ impl Simulation {
     }
 }
 
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 impl Simulation {
     /// Create an empty Simulation without agents
     pub fn empty(width: u32, height: u32) -> Simulation {
@@ -299,7 +299,6 @@ impl Simulation {
     }
 
     /// Head-to-head NN vs Naive duel constructor
-    #[cfg_attr(target_arch = "wasm32", wasm_bindgen(static_method_of = Simulation))]
     pub fn new_nn_vs_naive(
         width: u32, height: u32,
         orange: u32, yellow: u32,
@@ -473,7 +472,7 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let mut sim = Simulation::new(10, 10, 0, 0, 0, 0);
+        let sim = Simulation::new(10, 10, 0, 0, 0, 0);
         // Add test logic here
     }
 
@@ -619,5 +618,33 @@ mod integration_tests {
     }
 }
 
+#[cfg(test)]
+#[cfg(target_arch = "wasm32")]
+mod wasm_bindgen_tests {
+    use wasm_bindgen_test::*;
+    wasm_bindgen_test_configure!(run_in_browser);
+    use crate::WasmSimulation;
+
+    #[wasm_bindgen_test]
+    fn test_new_and_dimensions() {
+        let sim = WasmSimulation::new(64, 128, 1, 2, 3, 4);
+        assert_eq!(sim.width(), 64);
+        assert_eq!(sim.height(), 128);
+    }
+
+    #[wasm_bindgen_test]
+    fn test_nn_vs_naive_agents() {
+        let sim = WasmSimulation::new_nn_vs_naive(32, 32, 1, 1, 1, 1);
+        let arr = sim.agents_data();
+        assert!(arr.length() > 0, "agents_data should not be empty");
+    }
+}
+
 fn nn_factory() -> Box<dyn Brain> { Box::new(NNAgent) }
 fn naive_factory() -> Box<dyn Brain> { Box::new(NaiveBrain(NaiveAgent::new(1.2, 0.8))) }
+
+// WebAssembly bindings in `wasm_bindings.rs`
+#[cfg(target_arch = "wasm32")]
+mod wasm_bindings;
+#[cfg(target_arch = "wasm32")]
+pub use wasm_bindings::WasmSimulation;

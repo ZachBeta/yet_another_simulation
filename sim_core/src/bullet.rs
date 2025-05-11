@@ -13,7 +13,7 @@ pub fn run(sim: &mut Simulation) {
         let mut x = chunk[0];
         let mut y = chunk[1];
         let damage = chunk[2];
-        let mut ttl = chunk[3] - 1.0;
+        let ttl = chunk[3] - 1.0;
         if ttl <= 0.0 {
             continue;
         }

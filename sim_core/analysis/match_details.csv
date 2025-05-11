@@ -1,0 +1,11 @@
+gen,final_tick,subject_health,opponent_health,winner,champ_label,opp_label
+0,200,25.0,64.0,opponent,hof0,hof1
+1,200,20.0,46.0,opponent,hof0,hof1
+2,150,0.0,72.0,opponent,hof0,hof1
+3,200,46.0,46.0,draw,hof0,hof1
+4,200,10.0,46.0,opponent,hof0,hof1
+5,200,20.0,46.0,opponent,hof0,hof1
+6,154,46.0,0.0,subject,hof0,hof1
+7,154,0.0,46.0,opponent,hof0,hof1
+8,200,32.0,32.0,draw,hof0,hof1
+9,200,32.0,32.0,draw,hof0,hof1
