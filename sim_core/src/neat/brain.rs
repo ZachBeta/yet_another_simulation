@@ -8,7 +8,13 @@ use reqwest::blocking::Client;
 
 /// Adapter wrapping a Genome under the Brain trait
 #[derive(Clone)]
-pub struct NeatBrain(pub Genome);
+pub struct NeatBrain {
+    genome: Genome,
+    buffer: Vec<Vec<f32>>,
+    batch_size: usize,
+    client: Client,
+    url: String,
+}
 
 /// Cumulative inference time and count for profiling
 pub static INFER_TIME_NS: AtomicU64 = AtomicU64::new(0);
@@ -27,33 +33,49 @@ struct InferenceResponse {
     duration_ms: f32,
 }
 
+impl NeatBrain {
+    pub fn new(genome: Genome, batch_size: usize, url: String) -> Self {
+        NeatBrain { genome, buffer: Vec::new(), batch_size, client: Client::new(), url }
+    }
+}
+
 impl Brain for NeatBrain {
     fn think(&mut self, view: &WorldView, inputs: &[f32]) -> Action {
         // Choose inference path: Python service, ONNX, or CPU
         let outputs: Vec<f32>;
-        if view.config.use_python_service {
+        if !self.url.is_empty() {
+            // Remote inference per call
             let start_http = Instant::now();
-            let client = Client::new();
             let req = InferenceRequest { inputs: vec![inputs.to_vec()] };
-            let resp: InferenceResponse = client.post(view.config.python_service_url.as_ref().unwrap())
-                .json(&req).send().unwrap().json().unwrap();
+            let endpoint = format!("{}/infer", self.url);
+            eprintln!("[NeatBrain] POST to {} with payload: {:?}", endpoint, req.inputs);
+            let response = self.client.post(&endpoint)
+                .json(&req)
+                .send()
+                .unwrap_or_else(|e| panic!("HTTP POST failed to {}: {}", endpoint, e));
+            eprintln!("[NeatBrain] Received status: {}", response.status());
+            let resp: InferenceResponse = response.json()
+                .unwrap_or_else(|e| panic!("JSON parse failed from {}: {}", endpoint, e));
             let http_ns = start_http.elapsed().as_nanos() as u64;
             HTTP_TIME_NS.fetch_add(http_ns, Ordering::Relaxed);
             let remote_ns = (resp.duration_ms * 1e6) as u64;
             REMOTE_INFER_NS.fetch_add(remote_ns, Ordering::Relaxed);
-            outputs = resp.outputs.into_iter().next().unwrap();
-        } else {
-            let infer_start = Instant::now();
-            if view.config.use_onnx_gpu {
-                // ONNX batched inference
-                let session = view.config.onnx_session.as_ref().unwrap();
-                let input_tensor = ndarray::Array::from_shape_vec((1, inputs.len()), inputs.to_vec()).unwrap();
-                let result = session.run(vec![("X", input_tensor)]).unwrap();
-                outputs = result[0].as_array().iter().cloned().collect();
-            } else {
-                // Native CPU feedforward
-                outputs = self.0.feed_forward(inputs);
+            let outputs = resp.outputs.into_iter().next().unwrap();
+            // Decode outputs to Action
+            if outputs.len() >= 3 {
+                let vx = outputs[0];
+                let vy = outputs[1];
+                let thrust = Vec2 { x: vx, y: vy };
+                if outputs[2] > 0.5 {
+                    return Action::Fire { weapon: Weapon::Laser { damage: 1.0, range: view.world_width } };
+                }
+                return Action::Thrust(thrust);
             }
+            return Action::Idle;
+        } else {
+            // CPU-only inference
+            let infer_start = Instant::now();
+            outputs = self.genome.feed_forward(inputs);
             let infer_ns = infer_start.elapsed().as_nanos() as u64;
             INFER_TIME_NS.fetch_add(infer_ns, Ordering::Relaxed);
             INFER_COUNT.fetch_add(1, Ordering::Relaxed);

@@ -94,11 +94,22 @@ pub struct GraphProto {
     pub output: Vec<ValueInfoProto>,
 }
 
+// Operator set ID
+#[derive(Clone, PartialEq, prost::Message)]
+pub struct OperatorSetIdProto {
+    #[prost(string, tag = "1")]
+    pub domain: String,
+    #[prost(int64, tag = "2")]
+    pub version: i64,
+}
+
 // Model wrapper
 #[derive(Clone, PartialEq, prost::Message)]
 pub struct ModelProto {
     #[prost(int64, tag = "1")]
     pub ir_version: i64,
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag = "7")]
     pub graph: Option<GraphProto>,
+    #[prost(message, repeated, tag = "8")]
+    pub opset_import: Vec<OperatorSetIdProto>,
 }

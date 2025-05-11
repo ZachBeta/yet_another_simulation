@@ -17,8 +17,8 @@ fn random_coef() -> f32 {
     0.5
 }
 
-mod domain;
-use domain::{Action, Vec2, WorldView};
+pub mod domain;
+pub use domain::{Action, Vec2, WorldView};
 
 pub mod config;
 pub use config::Config;
@@ -32,6 +32,7 @@ mod ai;
 mod brain;
 pub use brain::Brain;
 pub mod neat;
+pub mod onnx_generated;
 
 use crate::ai::{NaiveAgent, NaiveBrain, NNAgent};
 

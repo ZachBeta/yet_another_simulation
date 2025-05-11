@@ -5,4 +5,4 @@
 # 3. Set ORT_LIB_LOCATION to that absolute path
 
 ORT_STRATEGY = "system"
-ORT_LIB_LOCATION = "/path/to/onnxruntime-osx-arm64/lib"
+ORT_LIB_LOCATION = "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/.cargo/onnxruntime-c/lib"

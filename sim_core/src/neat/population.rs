@@ -47,13 +47,21 @@ impl Population {
                 let mut agents: Vec<(Box<dyn Brain>, u32)> = Vec::new();
                 // subject
                 for _ in 0..evo_cfg.team_size {
-                    agents.push((Box::new(NeatBrain(genome.clone())), 0));
+                    agents.push((Box::new(NeatBrain::new(
+                        genome.clone(),
+                        sim_cfg.batch_size,
+                        sim_cfg.python_service_url.clone().unwrap_or_default(),
+                    )) as Box<dyn Brain>, 0));
                 }
                 // opponents
                 for (idx, &opp) in opponents.iter().enumerate() {
                     let team_id = (idx + 1) as u32;
                     for _ in 0..evo_cfg.team_size {
-                        agents.push((Box::new(NeatBrain(snapshot[opp].clone())), team_id));
+                        agents.push((Box::new(NeatBrain::new(
+                            snapshot[opp].clone(),
+                            sim_cfg.batch_size,
+                            sim_cfg.python_service_url.clone().unwrap_or_default(),
+                        )) as Box<dyn Brain>, team_id));
                     }
                 }
                 let stats = run_match(sim_cfg, evo_cfg, agents);

@@ -1,7 +1,7 @@
 //! Simulation configuration parameters.
 
 /// Centralized simulation constants for tuning and modularity.
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct Config {
     /// Repulsion distance for separation behavior.
     pub sep_range: f32,
@@ -47,19 +47,14 @@ pub struct Config {
     pub nearest_k_allies: usize,
     /// Number of nearest wrecks to include in sensor vector.
     pub nearest_k_wrecks: usize,
-    /// Enable GPU inference via ONNXRuntime
+    /// Enable GPU inference via ONNXRuntime (unused)
     pub use_onnx_gpu: bool,
-    /// ONNXRuntime environment (skipped in serde)
-    #[serde(skip)]
-    pub onnx_env: Option<Environment>,
-    /// ONNXRuntime session for batched inference
-    #[serde(skip)]
-    pub onnx_session: Option<Arc<Session>>,
     /// Enable Python service
     pub use_python_service: bool,
-    /// Python service URL (skipped in serde)
-    #[serde(skip)]
+    /// Python service URL
     pub python_service_url: Option<String>,
+    /// Batch size for Python inference service
+    pub batch_size: usize,
 }
 
 /// Selects distance calculation mode for AI
@@ -69,13 +64,8 @@ pub enum DistanceMode {
     Toroidal,
 }
 
-use std::sync::Arc;
-use onnxruntime::{environment::Environment, session::Session};
-
 impl Default for Config {
     fn default() -> Self {
-        // Initialize ONNXRuntime environment for GPU (optional)
-        let onnx_env = Environment::builder().with_name("neat").build().unwrap();
         Config {
             sep_range:         10.0,
             sep_strength:      0.5,
@@ -100,10 +90,9 @@ impl Default for Config {
             nearest_k_allies: 4,
             nearest_k_wrecks: 4,
             use_onnx_gpu: false,
-            onnx_env: Some(onnx_env),
-            onnx_session: None,
             use_python_service: false,
             python_service_url: None,
+            batch_size: 1,
         }
     }
 }

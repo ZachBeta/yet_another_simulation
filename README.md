@@ -49,9 +49,10 @@ Follow the tutorial for environment setup, model export, and running the service
 
 ```bash
 cd python_onnx_service/
-uv init
-uv sync
-uv run uvicorn app:app --reload --host 127.0.0.1 --port 8000
+# Activate your virtualenv
+source .venv/bin/activate
+# Run with uvicorn (provided by the venv)
+python -m uvicorn app:app --reload --host 127.0.0.1 --port 8000
 ```
 
 See `sim_core/docs/python_microservice_tutorial.md` for full instructions.

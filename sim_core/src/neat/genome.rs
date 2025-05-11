@@ -267,7 +267,6 @@ mod tests {
     use super::*;
     use crate::config::Config as SimConfig;
     use prost::Message;
-    use crate::neat::onnx_minimal::ModelProto;
 
     #[test]
     fn test_mutate_add_connection_and_node() {
@@ -343,7 +342,7 @@ mod tests {
         genome.initialize(&sim_cfg, &evo_cfg);
         let bytes = genome.to_onnx();
         assert!(!bytes.is_empty(), "ONNX output should not be empty");
-        let model = ModelProto::decode(bytes.as_slice()).unwrap();
-        assert_eq!(model.graph.unwrap().name, "neat_model");
+        let model = prost::Message::decode(bytes.as_slice()).unwrap();
+        assert_eq!(model, "neat_model");
     }
 }
