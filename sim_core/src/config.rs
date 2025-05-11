@@ -47,6 +47,19 @@ pub struct Config {
     pub nearest_k_allies: usize,
     /// Number of nearest wrecks to include in sensor vector.
     pub nearest_k_wrecks: usize,
+    /// Enable GPU inference via ONNXRuntime
+    pub use_onnx_gpu: bool,
+    /// ONNXRuntime environment (skipped in serde)
+    #[serde(skip)]
+    pub onnx_env: Option<Environment>,
+    /// ONNXRuntime session for batched inference
+    #[serde(skip)]
+    pub onnx_session: Option<Arc<Session>>,
+    /// Enable Python service
+    pub use_python_service: bool,
+    /// Python service URL (skipped in serde)
+    #[serde(skip)]
+    pub python_service_url: Option<String>,
 }
 
 /// Selects distance calculation mode for AI
@@ -56,8 +69,13 @@ pub enum DistanceMode {
     Toroidal,
 }
 
+use std::sync::Arc;
+use onnxruntime::{environment::Environment, session::Session};
+
 impl Default for Config {
     fn default() -> Self {
+        // Initialize ONNXRuntime environment for GPU (optional)
+        let onnx_env = Environment::builder().with_name("neat").build().unwrap();
         Config {
             sep_range:         10.0,
             sep_strength:      0.5,
@@ -81,6 +99,11 @@ impl Default for Config {
             nearest_k_enemies: 8,
             nearest_k_allies: 4,
             nearest_k_wrecks: 4,
+            use_onnx_gpu: false,
+            onnx_env: Some(onnx_env),
+            onnx_session: None,
+            use_python_service: false,
+            python_service_url: None,
         }
     }
 }

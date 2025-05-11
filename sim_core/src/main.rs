@@ -10,8 +10,10 @@ use std::time::Instant;
 use num_cpus;
 use rayon::ThreadPoolBuilder;
 use std::sync::atomic::Ordering;
-use sim_core::neat::brain::{INFER_TIME_NS, INFER_COUNT};
+use sim_core::neat::brain::{INFER_TIME_NS, INFER_COUNT, HTTP_TIME_NS, REMOTE_INFER_NS};
 use sim_core::neat::runner::{PHYS_TIME_NS, PHYS_COUNT};
+use sim_core::neat::onnx_exporter::export_genome;
+use std::sync::Arc;
 
 fn main() {
     // Parallelism: configure Rayon thread pool (default: half of CPU cores)
@@ -24,7 +26,23 @@ fn main() {
     println!("Using {} worker threads", workers);
 
     // Simulation config
-    let sim_cfg = Config::default();
+    let mut sim_cfg = Config::default();
+    // Toggle ONNX GPU via CLI flag
+    let use_onnx_gpu = args.contains(&"--onnx-gpu".to_string());
+    sim_cfg.use_onnx_gpu = use_onnx_gpu;
+    println!("ONNX GPU enabled: {}", use_onnx_gpu);
+    // Toggle Python service via CLI flag
+    let python_url = args.windows(2)
+        .find(|w| w[0] == "--python-service-url")
+        .map(|w| w[1].clone());
+    let use_python_service = python_url.is_some();
+    sim_cfg.use_python_service = use_python_service;
+    sim_cfg.python_service_url = python_url;
+    println!("Python service enabled: {}", use_python_service);
+    if use_python_service {
+        println!("Python service URL: {}", sim_cfg.python_service_url.as_ref().unwrap());
+    }
+
     // NEAT evolution config (override for quick test)
     let mut evo_cfg = EvolutionConfig::default();
     evo_cfg.pop_size = 10;
@@ -37,6 +55,16 @@ fn main() {
     let max_gens = 10;
     // Initialize population
     let mut population = Population::new(&evo_cfg);
+    // Initialize ONNX GPU session if enabled
+    if sim_cfg.use_onnx_gpu {
+        // Export the first genome as a prototype superset model
+        let model_bytes = export_genome(&population.genomes[0]);
+        let sess = sim_cfg.onnx_env.as_ref().unwrap()
+            .new_session_builder().unwrap()
+            .with_cuda().unwrap()
+            .with_model_from_memory(&model_bytes).unwrap();
+        sim_cfg.onnx_session = Some(Arc::new(sess));
+    }
     for gen in 0..max_gens {
         println!("--- Generation {} ---", gen);
         let eval_start = Instant::now();
@@ -80,4 +108,8 @@ fn main() {
     println!("=== Profiling Summary ===");
     println!("Inference: {:.2} ms total over {} calls", infer_time as f64 / 1e6, infer_count);
     println!("Physics:   {:.2} ms total over {} steps", phys_time as f64 / 1e6, phys_count);
+    let http_time = HTTP_TIME_NS.load(Ordering::Relaxed);
+    let remote_time = REMOTE_INFER_NS.load(Ordering::Relaxed);
+    println!("HTTP:      {:.2} ms total", http_time as f64 / 1e6);
+    println!("Remote:    {:.2} ms total", remote_time as f64 / 1e6);
 }
