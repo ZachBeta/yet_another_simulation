@@ -1,5 +1,7 @@
 from typing import List
 import os
+from dotenv import load_dotenv
+load_dotenv()
 import time
 import numpy as np
 import onnxruntime as ort
@@ -7,7 +9,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 # Request/Response schemas
-dir class InferenceRequest(BaseModel):
+class InferenceRequest(BaseModel):
     inputs: List[List[float]]
 
 class InferenceResponse(BaseModel):

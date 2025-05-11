@@ -1,0 +1,13 @@
+[project]
+name = "python-onnx-service"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi==0.95.0",
+    "numpy>=1.26.0",
+    "onnxruntime>=1.22.0",
+    "python-dotenv>=1.1.0",
+    "uvicorn[standard]==0.22.0",
+]

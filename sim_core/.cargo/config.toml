@@ -1,0 +1,8 @@
+[env]
+# Configure onnxruntime-sys to link against a prebuilt ONNX Runtime C library on macOS Arm64
+# 1. Download the ONNX Runtime C package (macOS Arm64) from https://github.com/microsoft/onnxruntime/releases
+# 2. Extract the archive and note the path to its 'lib' directory
+# 3. Set ORT_LIB_LOCATION to that absolute path
+
+ORT_STRATEGY = "system"
+ORT_LIB_LOCATION = "/path/to/onnxruntime-osx-arm64/lib"

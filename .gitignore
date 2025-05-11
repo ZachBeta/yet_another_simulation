@@ -14,3 +14,14 @@ yarn-error.log*
 
 # macOS
 .DS_Store
+
+# Python ONNX service artifacts
+python_onnx_service/.env
+python_onnx_service/.python-version
+python_onnx_service/.venv
+python_onnx_service/venv/
+python_onnx_service/__pycache__/
+python_onnx_service/uv.lock
+
+# Local ONNXRuntime C download
+sim_core/.cargo/onnxruntime-c/

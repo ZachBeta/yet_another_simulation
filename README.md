@@ -43,6 +43,19 @@ wasm-pack test --headless --chrome   # Run WASM binding tests
 - Agents use simple nearest-enemy targeting + separation and melee attack.
 - Next: integrate neural-network decision making for approach/orbit/target/fire/salvage loop.
 
+## Python ONNX Microservice
+
+Follow the tutorial for environment setup, model export, and running the service:
+
+```bash
+cd python_onnx_service/
+uv init
+uv sync
+uv run uvicorn app:app --reload --host 127.0.0.1 --port 8000
+```
+
+See `sim_core/docs/python_microservice_tutorial.md` for full instructions.
+
 ## Screenshots
 
 ![Screenshot 2025-05-04 12:35:25](./Screenshot%202025-05-04%20at%2012.35.25.png)
