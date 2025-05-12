@@ -57,6 +57,20 @@ python -m uvicorn app:app --reload --host 127.0.0.1 --port 8000
 
 See `sim_core/docs/python_microservice_tutorial.md` for full instructions.
 
+## Rust Inference Benchmarking
+
+To benchmark the Python microservice with minimal noise, run:
+
+```bash
+cd sim_core
+RUSTFLAGS="-Awarnings" cargo run --quiet -- --device mps --runs <runs> --batch=true --batch-size <size>
+```
+
+- `--quiet` hides Cargo compile messages
+- `RUSTFLAGS="-Awarnings"` suppresses rustc warnings
+- `--batch` toggles to the batched endpoint
+- `--batch-size` sets the number of inputs per batch
+
 ## Screenshots
 
 ![Screenshot 2025-05-04 12:35:25](./Screenshot%202025-05-04%20at%2012.35.25.png)
