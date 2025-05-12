@@ -23,11 +23,13 @@ app = FastAPI()
 # Load ONNX model on startup
 def get_session():
     model_path = os.getenv("MODEL_PATH", "model.onnx")
-    # Determine providers (CPU + Metal if available)
-    providers = ["CPUExecutionProvider"]
+    # Try GPU/backends on Apple M1: CoreML and MPS
+    providers = []
     for p in ort.get_available_providers():
-        if "MPSExecutionProvider" in p:
+        if p in ("CoreMLExecutionProvider", "MPSExecutionProvider"):
             providers.append(p)
+    # Always add CPU as fallback
+    providers.append("CPUExecutionProvider")
     session = ort.InferenceSession(model_path, providers=providers)
     print(f"ONNXRuntime providers: {session.get_providers()}")
     return session
@@ -57,7 +59,14 @@ async def batch_worker():
         if not batch_inputs:
             continue
         start_run = time.time()
-        raw = session.run(None, {"X": np.array(batch_inputs, dtype=np.float32)})[0].tolist()
+        arr = np.array(batch_inputs, dtype=np.float32)
+        raw_outputs = await asyncio.get_event_loop().run_in_executor(
+            None,
+            session.run,
+            None,
+            {"X": arr}
+        )
+        raw = raw_outputs[0].tolist()
         duration = (time.time() - start_run) * 1000.0
         idx = 0
         for fut, cnt in request_futures:

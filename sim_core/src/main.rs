@@ -6,9 +6,10 @@ use sim_core::Brain;
 use sim_core::neat::brain::NeatBrain;
 use std::env;
 use std::fs;
-use std::time::Instant;
+use std::time::{Instant, Duration};
 use num_cpus;
 use rayon::ThreadPoolBuilder;
+use rayon::prelude::*;
 use std::sync::atomic::Ordering;
 use sim_core::neat::brain::{INFER_TIME_NS, INFER_COUNT, HTTP_TIME_NS, REMOTE_INFER_NS};
 use sim_core::neat::runner::{PHYS_TIME_NS, PHYS_COUNT};
@@ -30,7 +31,7 @@ struct Opts {
     #[clap(long, default_value_t = 10)]
     runs: usize,
     /// number of worker threads
-    #[clap(long, default_value_t = num_cpus::get() / 2)]
+    #[clap(long, default_value_t = num_cpus::get().saturating_sub(1))]
     workers: usize,
     /// URL for Python service
     #[clap(long, default_value = "http://127.0.0.1:8000")]
@@ -39,11 +40,14 @@ struct Opts {
     #[clap(long)]
     export_model: Option<String>,
     /// toggle batch endpoint vs raw
-    #[clap(long, action=ArgAction::Set, default_value_t = false)]
+    #[clap(long, action=ArgAction::SetTrue)]
     batch: bool,
     /// batch size for Python service
     #[clap(long, default_value_t = 1)]
     batch_size: usize,
+    /// run benchmark for a fixed duration (seconds); overrides --runs
+    #[clap(long)]
+    duration: Option<u64>,
 }
 
 /// Run CPU or MPS inference bench and exit
@@ -66,18 +70,24 @@ fn bench_inference(sim_cfg: &Config, evo_cfg: &EvolutionConfig, runs: usize, bat
             .send()
             .unwrap_or_else(|e| { eprintln!("Failed to connect to Python service at {}: {}", url, e); std::process::exit(1) });
         eprintln!("[bench_inference] Connected to Python service at {}", url);
-        let mut runs_left = runs;
-        while runs_left > 0 {
-            let batch_sz = runs_left.min(sim_cfg.batch_size);
-            let payload = json!({ "inputs": vec![input_row.clone(); batch_sz] });
-            let start = Instant::now();
-            let _ = client.post(&format!("{}/{}", url, endpoint))
-                .json(&payload)
-                .send().unwrap()
-                .json::<serde_json::Value>().unwrap();
-            total_ns += start.elapsed().as_nanos();
-            runs_left -= batch_sz;
-        }
+        // Parallel batched inference
+        let inputs: Vec<_> = vec![input_row.clone(); runs];
+        let batches: Vec<_> = inputs
+            .chunks(sim_cfg.batch_size)
+            .map(|chunk| chunk.to_vec())
+            .collect();
+        total_ns = batches
+            .par_iter()
+            .map(|batch_inputs| {
+                let payload = json!({ "inputs": batch_inputs });
+                let start = Instant::now();
+                let _ = client.post(&format!("{}/{}", url, endpoint))
+                    .json(&payload)
+                    .send().unwrap()
+                    .json::<serde_json::Value>().unwrap();
+                start.elapsed().as_nanos()
+            })
+            .sum();
     } else {
         for _ in 0..runs {
             let start = Instant::now();
@@ -136,9 +146,31 @@ fn main() {
         return;
     }
 
-    // If benchmarking CPU/MPS, run bench and exit
+    // If benchmarking CPU/MPS, run bench across workers in parallel and exit
     if opts.device == "cpu" || opts.device == "mps" {
-        bench_inference(&sim_cfg, &evo_cfg, opts.runs, opts.batch);
+        // If duration mode, run until wall-clock >= duration
+        if let Some(secs) = opts.duration {
+            let dur = Duration::from_secs(secs);
+            let start = Instant::now();
+            (0..opts.workers)
+                .into_par_iter()
+                .for_each(|_| {
+                    while start.elapsed() < dur {
+                        bench_inference(&sim_cfg, &evo_cfg, sim_cfg.batch_size, opts.batch);
+                    }
+                });
+        } else {
+            // runs-based mode
+            let base = opts.runs / opts.workers;
+            let rem = opts.runs % opts.workers;
+            (0..opts.workers)
+                .into_par_iter()
+                .enumerate()
+                .for_each(|(i, _)| {
+                    let runs_i = base + if i < rem { 1 } else { 0 };
+                    bench_inference(&sim_cfg, &evo_cfg, runs_i, opts.batch);
+                });
+        }
         return;
     }
 
