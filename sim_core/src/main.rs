@@ -1,7 +1,7 @@
 use sim_core::config::Config;
 use sim_core::neat::config::EvolutionConfig;
 use sim_core::neat::population::Population;
-use sim_core::neat::runner::{PHYS_TIME_NS, PHYS_COUNT, MatchStats};
+use sim_core::neat::runner::{PHYS_TIME_NS, PHYS_COUNT, MATCH_TIME_NS, MATCH_COUNT, MatchStats};
 use sim_core::neat::runner::run_match_record;
 use sim_core::neat::runner::run_match;
 use sim_core::Brain;
@@ -226,6 +226,15 @@ fn run_train(opts: &TrainOpts) {
     let mut gen = 0;
     // run until generation or time limit
     while gen < max_gens && (opts.duration.map_or(true, |s| start.elapsed() < Duration::from_secs(s))) {
+        // reset instrumentation counters
+        PHYS_TIME_NS.store(0, Ordering::Relaxed);
+        PHYS_COUNT.store(0, Ordering::Relaxed);
+        MATCH_TIME_NS.store(0, Ordering::Relaxed);
+        MATCH_COUNT.store(0, Ordering::Relaxed);
+        INFER_TIME_NS.store(0, Ordering::Relaxed);
+        INFER_COUNT.store(0, Ordering::Relaxed);
+        HTTP_TIME_NS.store(0, Ordering::Relaxed);
+        REMOTE_INFER_NS.store(0, Ordering::Relaxed);
         // Timestamped generation header
         println!("[{:.2}s] --- Generation {} ---", start.elapsed().as_secs_f32(), gen);
         let eval_start = Instant::now();
@@ -233,6 +242,25 @@ fn run_train(opts: &TrainOpts) {
         population.evaluate(&sim_cfg, &evo_cfg);
         let eval_dur = eval_start.elapsed();
         println!(" Evaluation took: {:?}", eval_dur);
+        // performance instrumentation
+        let phys_ns = PHYS_TIME_NS.load(Ordering::Relaxed);
+        let phys_ct = PHYS_COUNT.load(Ordering::Relaxed);
+        let match_ns = MATCH_TIME_NS.load(Ordering::Relaxed);
+        let match_ct = MATCH_COUNT.load(Ordering::Relaxed);
+        let infer_ns = INFER_TIME_NS.load(Ordering::Relaxed);
+        let infer_ct = INFER_COUNT.load(Ordering::Relaxed);
+        let http_ns = HTTP_TIME_NS.load(Ordering::Relaxed);
+        let remote_ns = REMOTE_INFER_NS.load(Ordering::Relaxed);
+        println!(
+            "  Perf: sim avg = {:.2}µs/tick ({} ticks); match avg = {:.2}ms/match ({} matches)",
+            phys_ns as f64 / phys_ct as f64 / 1e3, phys_ct,
+            match_ns as f64 / match_ct as f64 / 1e6, match_ct,
+        );
+        println!(
+            "        infer avg = {:.2}µs ({}); http total = {:.2}ms; remote infer = {:.2}ms",
+            infer_ns as f64 / infer_ct as f64 / 1e3, infer_ct,
+            http_ns as f64 / 1e6, remote_ns as f64 / 1e6,
+        );
         let fitnesses: Vec<f32> = population.genomes.iter().map(|g| g.fitness).collect();
         let best = *fitnesses.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
         let avg = fitnesses.iter().sum::<f32>() / fitnesses.len() as f32;

@@ -12,6 +12,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 pub static PHYS_TIME_NS: AtomicU64 = AtomicU64::new(0);
 pub static PHYS_COUNT: AtomicU64 = AtomicU64::new(0);
 
+/// Cumulative match time and count for profiling
+pub static MATCH_TIME_NS: AtomicU64 = AtomicU64::new(0);
+pub static MATCH_COUNT: AtomicU64 = AtomicU64::new(0);
+
 /// Raw stats collected from one match
 pub struct MatchStats {
     pub ticks: usize,
@@ -25,6 +29,8 @@ pub fn run_match(
     evo_cfg: &EvolutionConfig,
     agents: Vec<(Box<dyn Brain>, u32)>,
 ) -> MatchStats {
+    #[cfg(not(target_arch = "wasm32"))]
+    let match_start = Instant::now();
     // Determine subject team ID
     let subject_team = agents[0].1;
     // Initialize simulation
@@ -88,6 +94,12 @@ pub fn run_match(
     }
     stats.subject_team_health = team_health;
     stats.total_damage_inflicted = initial_opponent_health - opp_health;
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let match_ns = match_start.elapsed().as_nanos() as u64;
+        MATCH_TIME_NS.fetch_add(match_ns, Ordering::Relaxed);
+        MATCH_COUNT.fetch_add(1, Ordering::Relaxed);
+    }
     stats
 }
 
