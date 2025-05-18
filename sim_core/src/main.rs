@@ -338,6 +338,9 @@ fn run_tournament(opts: &TournamentOpts) {
     INFER_COUNT.store(0, Ordering::Relaxed);
     HTTP_TIME_NS.store(0, Ordering::Relaxed);
     REMOTE_INFER_NS.store(0, Ordering::Relaxed);
+    // configure Rayon thread pool to cpu_count-1 threads
+    let threads = num_cpus::get().saturating_sub(1).max(1);
+    ThreadPoolBuilder::new().num_threads(threads).build_global().expect("Failed to build global thread pool");
     // Ensure output dir exists
     fs::create_dir_all(&opts.pop_path).unwrap();
     // Simulation configs

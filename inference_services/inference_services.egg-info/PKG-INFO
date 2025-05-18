@@ -1,0 +1,12 @@
+Metadata-Version: 2.4
+Name: inference_services
+Version: 0.1.0
+Summary: Python ONNX inference services
+Requires-Python: >=3.10
+Requires-Dist: fastapi==0.95.0
+Requires-Dist: uvicorn[standard]==0.22.0
+Requires-Dist: numpy
+Requires-Dist: onnxruntime
+Requires-Dist: pydantic
+Requires-Dist: python-dotenv
+Requires-Dist: grpcio
