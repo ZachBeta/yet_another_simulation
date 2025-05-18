@@ -10,6 +10,14 @@ A high-level overview of current progress and next phases for the NEAT pipeline 
 - No RPC or ONNX involvement in training.
 - Deliverable: Fully functional, high-performance training loop.
 
+### Phase 1b: Training Quality Enhancements
+
+- Round-robin & tournament evaluation for robust fitness signals
+- Always include NaiveAgent in each generation’s evaluation
+- Progressive difficulty scheduling (curriculum learning)
+- Co-evolution of adversary populations
+- Hyperparameter tuning harness via tournament comparisons
+
 ## Phase 2: GPU-Accelerated Inference (🚧 Deferred)
 
 Details in `Phase2_GPU_Options.md`:
