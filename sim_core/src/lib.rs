@@ -28,7 +28,7 @@ mod movement;
 mod combat;
 mod bullet;
 mod loot;
-mod ai;
+pub mod ai;
 mod brain;
 pub use brain::Brain;
 pub mod neat;

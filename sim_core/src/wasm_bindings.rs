@@ -3,6 +3,9 @@ use wasm_bindgen::JsValue;
 use js_sys::Float32Array;
 use crate::Simulation;
 use crate::config::DistanceMode;
+use serde_json;
+use crate::neat::genome::Genome;
+use crate::neat::brain::NeatBrain;
 
 /// WebAssembly bindings for Simulation
 #[wasm_bindgen]
@@ -145,11 +148,45 @@ impl WasmSimulation {
     }
 }
 
+// Enable better panic messages in WASM
+use console_error_panic_hook;
+
+/// Initialize panic hook for detailed error messages in WASM
+#[wasm_bindgen(start)]
+pub fn init_panic() {
+    console_error_panic_hook::set_once();
+}
+
 #[wasm_bindgen]
 impl WasmSimulation {
     /// Head-to-head NN vs Naive duel constructor
     #[wasm_bindgen(static_method_of = WasmSimulation, js_name = new_nn_vs_naive)]
     pub fn new_nn_vs_naive(width: u32, height: u32, orange: u32, yellow: u32, green: u32, blue: u32) -> WasmSimulation {
         WasmSimulation { inner: Simulation::new_nn_vs_naive(width, height, orange, yellow, green, blue) }
+    }
+
+    /// Head-to-head Champion JSON vs Naive duel constructor
+    #[wasm_bindgen(static_method_of = WasmSimulation, js_name = new_champ_vs_naive)]
+    pub fn new_champ_vs_naive(width: u32, height: u32, orange: u32, yellow: u32, green: u32, blue: u32, genome_json: &str) -> WasmSimulation {
+        // parse genome
+        let genome: Genome = serde_json::from_str(genome_json).expect("Invalid genome JSON");
+        // build default sim with stub NN vs naive
+        let mut ws = WasmSimulation::new(width, height, orange, yellow, green, blue);
+        let batch = 1;
+        let url = String::new();
+        // replace stub NN agents at TL quadrant
+        let start1 = 0;
+        let end1 = orange as usize;
+        for i in start1..end1 {
+            ws.inner.agents_impl[i] = Box::new(NeatBrain::new(genome.clone(), batch, url.clone()));
+        }
+        // replace stub NN agents at BR quadrant
+        let skip = (orange + yellow + green) as usize;
+        let start2 = skip;
+        let end2 = start2 + blue as usize;
+        for i in start2..end2 {
+            ws.inner.agents_impl[i] = Box::new(NeatBrain::new(genome.clone(), batch, url.clone()));
+        }
+        ws
     }
 }

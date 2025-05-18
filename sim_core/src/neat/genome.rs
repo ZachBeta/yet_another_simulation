@@ -3,9 +3,10 @@ use rand::{thread_rng, Rng, seq::SliceRandom};
 use std::collections::HashMap;
 use super::config::EvolutionConfig;
 use super::onnx_exporter;
+use serde::{Serialize, Deserialize};
 
 /// A node in the network
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NodeType {
     Input,
     Hidden,
@@ -13,14 +14,14 @@ pub enum NodeType {
 }
 
 /// A node in the network
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NodeGene {
     pub id: usize,
     pub node_type: NodeType,
 }
 
 /// A connection with innovation number
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ConnGene {
     pub in_node: usize,
     pub out_node: usize,
@@ -30,7 +31,7 @@ pub struct ConnGene {
 }
 
 /// A genome: lists of nodes & connections and its fitness
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Genome {
     pub nodes: Vec<NodeGene>,
     pub conns: Vec<ConnGene>,

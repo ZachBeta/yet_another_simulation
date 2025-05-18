@@ -4,6 +4,8 @@ use super::genome::Genome;
 use std::time::Instant;
 use std::sync::atomic::{AtomicU64, Ordering};
 use serde::{Serialize, Deserialize};
+
+#[cfg(not(target_arch = "wasm32"))]
 use reqwest::blocking::Client;
 
 /// Adapter wrapping a Genome under the Brain trait
@@ -12,6 +14,7 @@ pub struct NeatBrain {
     genome: Genome,
     buffer: Vec<Vec<f32>>,
     batch_size: usize,
+    #[cfg(not(target_arch = "wasm32"))]
     client: Client,
     url: String,
 }
@@ -35,7 +38,14 @@ struct InferenceResponse {
 
 impl NeatBrain {
     pub fn new(genome: Genome, batch_size: usize, url: String) -> Self {
-        NeatBrain { genome, buffer: Vec::new(), batch_size, client: Client::new(), url }
+        NeatBrain {
+            genome,
+            buffer: Vec::new(),
+            batch_size,
+            #[cfg(not(target_arch = "wasm32"))]
+            client: Client::new(),
+            url,
+        }
     }
 }
 
@@ -43,6 +53,7 @@ impl Brain for NeatBrain {
     fn think(&mut self, view: &WorldView, inputs: &[f32]) -> Action {
         // Choose inference path: Python service, ONNX, or CPU
         let outputs: Vec<f32>;
+        #[cfg(not(target_arch = "wasm32"))]
         if !self.url.is_empty() {
             // Remote inference per call
             let start_http = Instant::now();
@@ -72,12 +83,20 @@ impl Brain for NeatBrain {
                 return Action::Thrust(thrust);
             }
             return Action::Idle;
-        } else {
-            // CPU-only inference
+        }
+        // CPU-only inference with timing on native
+        #[cfg(not(target_arch = "wasm32"))]
+        {
             let infer_start = Instant::now();
             outputs = self.genome.feed_forward(inputs);
             let infer_ns = infer_start.elapsed().as_nanos() as u64;
             INFER_TIME_NS.fetch_add(infer_ns, Ordering::Relaxed);
+            INFER_COUNT.fetch_add(1, Ordering::Relaxed);
+        }
+        // WebAssembly inference without timing
+        #[cfg(target_arch = "wasm32")]
+        {
+            outputs = self.genome.feed_forward(inputs);
             INFER_COUNT.fetch_add(1, Ordering::Relaxed);
         }
         // If we get at least 3 outputs: [vx, vy, fire_score]

@@ -2,7 +2,6 @@
 import os
 import sys
 import time
-import argparse
 import logging
 import platform
 import numpy as np
@@ -10,10 +9,9 @@ import onnxruntime as ort
 import grpc
 from concurrent import futures
 
-# Add the proto directory to the path so we can import the generated modules
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import proto.neural_service_pb2 as neural_pb2
-import proto.neural_service_pb2_grpc as neural_pb2_grpc
+# Import generated proto modules via package-relative imports
+from .proto import neural_service_pb2 as neural_pb2
+from .proto import neural_service_pb2_grpc as neural_pb2_grpc
 
 # Configure logging
 logging.basicConfig(
@@ -21,12 +19,6 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-
-# Argument parsing
-parser = argparse.ArgumentParser(description="ONNX Neural Service")
-parser.add_argument("--port", type=int, default=50053, help="Port for the gRPC service")
-parser.add_argument("--model_path", type=str, default="python/output/rps_value1.onnx", help="Path to the ONNX model file")
-args = parser.parse_args()
 
 class NeuralServicer(neural_pb2_grpc.NeuralServiceServicer):
     """gRPC servicer implementation for neural network inference using ONNX Runtime"""
@@ -299,7 +291,7 @@ def serve(port, model_path, max_workers=10):
         # Create an instance of NeuralServicer to call print_stats
         # This is a bit of a hack; stats ideally would be managed by the server instance or a separate class.
         # For simplicity, we re-fetch model_path if needed or use the global args.
-        temp_servicer_for_stats = NeuralServicer(model_path=args.model_path) 
+        temp_servicer_for_stats = NeuralServicer(model_path=model_path) 
         temp_servicer_for_stats.total_requests = server.total_requests if hasattr(server, 'total_requests') else 0 # This won't work as server doesn't own these
         temp_servicer_for_stats.total_batch_size = server.total_batch_size if hasattr(server, 'total_batch_size') else 0
         temp_servicer_for_stats.inference_time = server.inference_time if hasattr(server, 'inference_time') else 0
@@ -312,4 +304,9 @@ def serve(port, model_path, max_workers=10):
         logger.info("Server stopped.")
 
 if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description="ONNX Neural Service")
+    parser.add_argument("--port", type=int, default=50053, help="Port for the gRPC service")
+    parser.add_argument("--model_path", type=str, default="python/output/rps_value1.onnx", help="Path to the ONNX model file")
+    args = parser.parse_args()
     serve(args.port, args.model_path) 

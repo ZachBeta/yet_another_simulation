@@ -33,6 +33,16 @@
     </label>
     <span id="modeDisplay">Mode: Euclidean (walls)</span>
     <div id="brainLegend" style="margin-top:4px;"></div>
+    <label style="margin-left:8px;">
+      Champion:
+      <select id="champSelect" style="width:200px;"></select>
+      <span id="champElo" style="margin-left:8px;">Elo: N/A</span>
+    </label>
+    <label style="margin-left:8px;">
+      Replay Path:
+      <input id="replayPath" type="text" placeholder="out/champion_latest_vs_naive.jsonl" style="width:200px;" />
+    </label>
+    <button id="loadReplayBtn">Load Replay</button>
   </div>
   <canvas id="battleCanvas" width="800" height="600"></canvas>
   <script type="module" src="script.js"></script>

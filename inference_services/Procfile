@@ -1,0 +1,3 @@
+http: uv run uvicorn http_service.app:app --reload --port ${HTTP_PORT:-8000}
+grpc: uv run python -m grpc_service --port ${GRPC_PORT:-50070} --model-path ${MODEL_PATH:-model.onnx}
+legacy: uv run bash legacy_service/start_neural_service.sh --port ${LEGACY_PORT:-50052}

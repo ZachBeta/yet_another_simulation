@@ -1,0 +1,686 @@
+[
+  {
+    "elo": 743.9620361328125,
+    "path": "../out/champion_gen_095.json"
+  },
+  {
+    "elo": 1651.3685302734375,
+    "path": "../out/champion_gen_101.json"
+  },
+  {
+    "elo": 352.56536865234375,
+    "path": "../out/champion_gen_108.json"
+  },
+  {
+    "elo": 1180.95361328125,
+    "path": "../out/champion_gen_044.json"
+  },
+  {
+    "elo": 882.9415893554688,
+    "path": "../out/champion_gen_026.json"
+  },
+  {
+    "elo": 1610.4381103515625,
+    "path": "../out/champion_gen_120.json"
+  },
+  {
+    "elo": 923.2720336914062,
+    "path": "../out/champion_gen_076.json"
+  },
+  {
+    "elo": 1675.247314453125,
+    "path": "../out/champion_gen_091.json"
+  },
+  {
+    "elo": 1786.11083984375,
+    "path": "../out/champion_gen_074.json"
+  },
+  {
+    "elo": 1175.80859375,
+    "path": "../out/champion_gen_052.json"
+  },
+  {
+    "elo": 733.71240234375,
+    "path": "../out/champion_gen_153.json"
+  },
+  {
+    "elo": 1137.0831298828125,
+    "path": "../out/champion_gen_008.json"
+  },
+  {
+    "elo": 577.8442993164062,
+    "path": "../out/champion_gen_165.json"
+  },
+  {
+    "elo": 345.557861328125,
+    "path": "../out/champion_gen_020.json"
+  },
+  {
+    "elo": 703.5225830078125,
+    "path": "../out/champion_gen_037.json"
+  },
+  {
+    "elo": 1529.41552734375,
+    "path": "../out/champion_gen_100.json"
+  },
+  {
+    "elo": 1232.3896484375,
+    "path": "../out/champion_gen_055.json"
+  },
+  {
+    "elo": 1286.970703125,
+    "path": "../out/champion_gen_070.json"
+  },
+  {
+    "elo": 605.1102294921875,
+    "path": "../out/champion_gen_040.json"
+  },
+  {
+    "elo": 1115.61865234375,
+    "path": "../out/champion_gen_024.json"
+  },
+  {
+    "elo": 1662.6446533203125,
+    "path": "../out/champion_gen_087.json"
+  },
+  {
+    "elo": 574.466552734375,
+    "path": "../out/champion_gen_017.json"
+  },
+  {
+    "elo": 1234.4227294921875,
+    "path": "../out/champion_gen_054.json"
+  },
+  {
+    "elo": 1115.19482421875,
+    "path": "../out/champion_gen_143.json"
+  },
+  {
+    "elo": 1161.6351318359375,
+    "path": "../out/champion_gen_025.json"
+  },
+  {
+    "elo": 1573.32568359375,
+    "path": "../out/champion_gen_141.json"
+  },
+  {
+    "elo": 1769.846923828125,
+    "path": "../out/champion_gen_062.json"
+  },
+  {
+    "elo": 1706.8369140625,
+    "path": "../out/champion_gen_059.json"
+  },
+  {
+    "elo": 1144.0577392578125,
+    "path": "../out/champion_gen_048.json"
+  },
+  {
+    "elo": 1606.2960205078125,
+    "path": "../out/champion_gen_161.json"
+  },
+  {
+    "elo": 1086.8394775390625,
+    "path": "../out/champion_gen_053.json"
+  },
+  {
+    "elo": 923.6940307617188,
+    "path": "../out/champion_gen_027.json"
+  },
+  {
+    "elo": 1618.7867431640625,
+    "path": "../out/champion_gen_121.json"
+  },
+  {
+    "elo": 1493.934326171875,
+    "path": "../out/champion_gen_086.json"
+  },
+  {
+    "elo": 1703.026611328125,
+    "path": "../out/champion_gen_063.json"
+  },
+  {
+    "elo": 1653.421142578125,
+    "path": "../out/champion_gen_140.json"
+  },
+  {
+    "elo": 1271.4805908203125,
+    "path": "../out/champion_gen_122.json"
+  },
+  {
+    "elo": 1200.986572265625,
+    "path": "../out/champion_gen_067.json"
+  },
+  {
+    "elo": 977.3410034179688,
+    "path": "../out/champion_gen_144.json"
+  },
+  {
+    "elo": 909.556640625,
+    "path": "../out/champion_gen_152.json"
+  },
+  {
+    "elo": 1633.328125,
+    "path": "../out/champion_gen_072.json"
+  },
+  {
+    "elo": 1412.7271728515625,
+    "path": "../out/champion_gen_119.json"
+  },
+  {
+    "elo": 324.78289794921875,
+    "path": "../out/champion_gen_036.json"
+  },
+  {
+    "elo": 1235.6644287109375,
+    "path": "../out/champion_gen_042.json"
+  },
+  {
+    "elo": 569.7390747070312,
+    "path": "../out/champion_gen_124.json"
+  },
+  {
+    "elo": 340.03009033203125,
+    "path": "../out/champion_gen_061.json"
+  },
+  {
+    "elo": 1665.92236328125,
+    "path": "../out/champion_gen_156.json"
+  },
+  {
+    "elo": 1768.23095703125,
+    "path": "../out/champion_gen_127.json"
+  },
+  {
+    "elo": 1002.09521484375,
+    "path": "../out/champion_gen_060.json"
+  },
+  {
+    "elo": 368.9294738769531,
+    "path": "../out/champion_gen_000.json"
+  },
+  {
+    "elo": 1142.6043701171875,
+    "path": "../out/champion_gen_002.json"
+  },
+  {
+    "elo": 1389.103515625,
+    "path": "../out/champion_gen_123.json"
+  },
+  {
+    "elo": 1693.774658203125,
+    "path": "../out/champion_gen_130.json"
+  },
+  {
+    "elo": 1490.943359375,
+    "path": "../out/champion_gen_115.json"
+  },
+  {
+    "elo": 567.6665649414062,
+    "path": "../out/champion_gen_057.json"
+  },
+  {
+    "elo": 786.5128784179688,
+    "path": "../out/champion_gen_047.json"
+  },
+  {
+    "elo": 500.5783996582031,
+    "path": "../out/champion_gen_149.json"
+  },
+  {
+    "elo": 882.7418823242188,
+    "path": "../out/champion_gen_056.json"
+  },
+  {
+    "elo": 1226.040283203125,
+    "path": "../out/champion_gen_038.json"
+  },
+  {
+    "elo": 1151.6529541015625,
+    "path": "../out/champion_gen_092.json"
+  },
+  {
+    "elo": 1211.6151123046875,
+    "path": "../out/champion_gen_034.json"
+  },
+  {
+    "elo": 1282.60546875,
+    "path": "../out/champion_gen_163.json"
+  },
+  {
+    "elo": 1128.4415283203125,
+    "path": "../out/champion_gen_114.json"
+  },
+  {
+    "elo": 857.9227905273438,
+    "path": "../out/champion_gen_168.json"
+  },
+  {
+    "elo": 1202.05322265625,
+    "path": "../out/champion_gen_138.json"
+  },
+  {
+    "elo": 1197.854736328125,
+    "path": "../out/champion_gen_029.json"
+  },
+  {
+    "elo": 1740.2373046875,
+    "path": "../out/champion_gen_110.json"
+  },
+  {
+    "elo": 1744.339599609375,
+    "path": "../out/champion_gen_111.json"
+  },
+  {
+    "elo": 1046.5362548828125,
+    "path": "../out/champion_gen_028.json"
+  },
+  {
+    "elo": 1010.8324584960938,
+    "path": "../out/champion_gen_046.json"
+  },
+  {
+    "elo": 937.0022583007812,
+    "path": "../out/champion_gen_031.json"
+  },
+  {
+    "elo": 1776.7294921875,
+    "path": "../out/champion_gen_166.json"
+  },
+  {
+    "elo": 725.2802734375,
+    "path": "../out/champion_gen_094.json"
+  },
+  {
+    "elo": 800.6315307617188,
+    "path": "../out/champion_gen_169.json"
+  },
+  {
+    "elo": 785.1983032226562,
+    "path": "../out/champion_latest.json"
+  },
+  {
+    "elo": 1236.9686279296875,
+    "path": "../out/champion_gen_015.json"
+  },
+  {
+    "elo": 1707.3643798828125,
+    "path": "../out/champion_gen_126.json"
+  },
+  {
+    "elo": 1186.3338623046875,
+    "path": "../out/champion_gen_013.json"
+  },
+  {
+    "elo": 873.3485107421875,
+    "path": "../out/champion_gen_129.json"
+  },
+  {
+    "elo": 1500.5882568359375,
+    "path": "../out/champion_gen_142.json"
+  },
+  {
+    "elo": 1713.4681396484375,
+    "path": "../out/champion_gen_096.json"
+  },
+  {
+    "elo": 1639.1121826171875,
+    "path": "../out/champion_gen_137.json"
+  },
+  {
+    "elo": 1226.6304931640625,
+    "path": "../out/champion_gen_159.json"
+  },
+  {
+    "elo": 1009.7609252929688,
+    "path": "../out/champion_gen_133.json"
+  },
+  {
+    "elo": 1748.02197265625,
+    "path": "../out/champion_gen_081.json"
+  },
+  {
+    "elo": 1480.23779296875,
+    "path": "../out/champion_gen_090.json"
+  },
+  {
+    "elo": 1670.2578125,
+    "path": "../out/champion_gen_068.json"
+  },
+  {
+    "elo": 1101.5682373046875,
+    "path": "../out/champion_gen_148.json"
+  },
+  {
+    "elo": 1171.269287109375,
+    "path": "../out/champion_gen_003.json"
+  },
+  {
+    "elo": 1247.8646240234375,
+    "path": "../out/champion_gen_023.json"
+  },
+  {
+    "elo": 1741.6634521484375,
+    "path": "../out/champion_gen_147.json"
+  },
+  {
+    "elo": 1736.9742431640625,
+    "path": "../out/champion_gen_151.json"
+  },
+  {
+    "elo": 1211.0260009765625,
+    "path": "../out/champion_gen_022.json"
+  },
+  {
+    "elo": 1611.9482421875,
+    "path": "../out/champion_gen_064.json"
+  },
+  {
+    "elo": 943.2247314453125,
+    "path": "../out/champion_gen_113.json"
+  },
+  {
+    "elo": 1565.5941162109375,
+    "path": "../out/champion_gen_116.json"
+  },
+  {
+    "elo": 1228.4986572265625,
+    "path": "../out/champion_gen_014.json"
+  },
+  {
+    "elo": 1720.12060546875,
+    "path": "../out/champion_gen_079.json"
+  },
+  {
+    "elo": 1689.0406494140625,
+    "path": "../out/champion_gen_075.json"
+  },
+  {
+    "elo": 1597.2132568359375,
+    "path": "../out/champion_gen_065.json"
+  },
+  {
+    "elo": 1065.5426025390625,
+    "path": "../out/champion_gen_012.json"
+  },
+  {
+    "elo": 473.904541015625,
+    "path": "../out/champion_gen_016.json"
+  },
+  {
+    "elo": 1756.31201171875,
+    "path": "../out/champion_gen_078.json"
+  },
+  {
+    "elo": 851.3461303710938,
+    "path": "../out/champion_gen_105.json"
+  },
+  {
+    "elo": 1709.2281494140625,
+    "path": "../out/champion_gen_167.json"
+  },
+  {
+    "elo": 1506.0665283203125,
+    "path": "../out/champion_gen_069.json"
+  },
+  {
+    "elo": 802.3855590820312,
+    "path": "../out/champion_gen_010.json"
+  },
+  {
+    "elo": 1309.875732421875,
+    "path": "../out/champion_gen_134.json"
+  },
+  {
+    "elo": 1239.8145751953125,
+    "path": "../out/champion_gen_039.json"
+  },
+  {
+    "elo": 1022.8185424804688,
+    "path": "../out/champion_gen_004.json"
+  },
+  {
+    "elo": 1467.73974609375,
+    "path": "../out/champion_gen_154.json"
+  },
+  {
+    "elo": 1443.5947265625,
+    "path": "../out/champion_gen_103.json"
+  },
+  {
+    "elo": 747.1105346679688,
+    "path": "../out/champion_gen_006.json"
+  },
+  {
+    "elo": 686.4517211914062,
+    "path": "../out/champion_gen_021.json"
+  },
+  {
+    "elo": 996.0169677734375,
+    "path": "../out/champion_gen_011.json"
+  },
+  {
+    "elo": 1102.0081787109375,
+    "path": "../out/champion_gen_005.json"
+  },
+  {
+    "elo": 1751.5654296875,
+    "path": "../out/champion_gen_097.json"
+  },
+  {
+    "elo": 673.8555908203125,
+    "path": "../out/champion_gen_082.json"
+  },
+  {
+    "elo": 748.3919677734375,
+    "path": "../out/champion_gen_128.json"
+  },
+  {
+    "elo": 1042.810546875,
+    "path": "../out/champion_gen_164.json"
+  },
+  {
+    "elo": 1747.8692626953125,
+    "path": "../out/champion_gen_150.json"
+  },
+  {
+    "elo": 674.3466796875,
+    "path": "../out/champion_gen_112.json"
+  },
+  {
+    "elo": 1217.6029052734375,
+    "path": "../out/champion_gen_018.json"
+  },
+  {
+    "elo": 1389.1622314453125,
+    "path": "../out/champion_gen_093.json"
+  },
+  {
+    "elo": 1400.8770751953125,
+    "path": "../out/champion_gen_158.json"
+  },
+  {
+    "elo": 873.1327514648438,
+    "path": "../out/champion_gen_030.json"
+  },
+  {
+    "elo": 1246.630859375,
+    "path": "../out/champion_gen_035.json"
+  },
+  {
+    "elo": 1348.6363525390625,
+    "path": "../out/champion_gen_162.json"
+  },
+  {
+    "elo": 1033.1103515625,
+    "path": "../out/champion_gen_007.json"
+  },
+  {
+    "elo": 1100.27099609375,
+    "path": "../out/champion_gen_102.json"
+  },
+  {
+    "elo": 579.1092529296875,
+    "path": "../out/champion_gen_001.json"
+  },
+  {
+    "elo": 1244.090576171875,
+    "path": "../out/champion_gen_019.json"
+  },
+  {
+    "elo": 1440.01708984375,
+    "path": "../out/champion_gen_139.json"
+  },
+  {
+    "elo": 1568.876953125,
+    "path": "../out/champion_gen_073.json"
+  },
+  {
+    "elo": 1120.2012939453125,
+    "path": "../out/champion_gen_032.json"
+  },
+  {
+    "elo": 601.0209350585938,
+    "path": "../out/champion_gen_104.json"
+  },
+  {
+    "elo": 661.206298828125,
+    "path": "../out/champion_gen_145.json"
+  },
+  {
+    "elo": 1723.4930419921875,
+    "path": "../out/champion_gen_080.json"
+  },
+  {
+    "elo": 1137.5205078125,
+    "path": "../out/champion_gen_084.json"
+  },
+  {
+    "elo": 953.7388916015625,
+    "path": "../out/champion_gen_099.json"
+  },
+  {
+    "elo": 1337.5582275390625,
+    "path": "../out/champion_gen_135.json"
+  },
+  {
+    "elo": 1157.90966796875,
+    "path": "../out/champion_gen_155.json"
+  },
+  {
+    "elo": 1214.3045654296875,
+    "path": "../out/champion_gen_118.json"
+  },
+  {
+    "elo": 1761.0765380859375,
+    "path": "../out/champion_gen_058.json"
+  },
+  {
+    "elo": 1140.70556640625,
+    "path": "../out/champion_gen_009.json"
+  },
+  {
+    "elo": 1781.1873779296875,
+    "path": "../out/champion_gen_131.json"
+  },
+  {
+    "elo": 619.7479858398438,
+    "path": "../out/champion_gen_132.json"
+  },
+  {
+    "elo": 793.6284790039062,
+    "path": "../out/champion_gen_083.json"
+  },
+  {
+    "elo": 763.5336303710938,
+    "path": "../out/champion_gen_051.json"
+  },
+  {
+    "elo": 1740.328857421875,
+    "path": "../out/champion_gen_107.json"
+  },
+  {
+    "elo": 1215.267333984375,
+    "path": "../out/champion_gen_088.json"
+  },
+  {
+    "elo": 456.3124694824219,
+    "path": "../out/champion_gen_041.json"
+  },
+  {
+    "elo": 1074.5736083984375,
+    "path": "../out/champion_gen_125.json"
+  },
+  {
+    "elo": 1343.389892578125,
+    "path": "../out/champion_gen_089.json"
+  },
+  {
+    "elo": 1546.852294921875,
+    "path": "../out/champion_gen_157.json"
+  },
+  {
+    "elo": 1730.8824462890625,
+    "path": "../out/champion_gen_106.json"
+  },
+  {
+    "elo": 1075.289794921875,
+    "path": "../out/champion_gen_045.json"
+  },
+  {
+    "elo": 1262.029296875,
+    "path": "../out/champion_gen_071.json"
+  },
+  {
+    "elo": 1657.5927734375,
+    "path": "../out/champion_gen_117.json"
+  },
+  {
+    "elo": 1743.043212890625,
+    "path": "../out/champion_gen_146.json"
+  },
+  {
+    "elo": 1634.2410888671875,
+    "path": "../out/champion_gen_160.json"
+  },
+  {
+    "elo": 1583.4932861328125,
+    "path": "../out/champion_gen_136.json"
+  },
+  {
+    "elo": 1022.0967407226562,
+    "path": "../out/champion_gen_050.json"
+  },
+  {
+    "elo": 448.9515075683594,
+    "path": "../out/champion_gen_077.json"
+  },
+  {
+    "elo": 491.317626953125,
+    "path": "../out/champion_gen_098.json"
+  },
+  {
+    "elo": 1088.0325927734375,
+    "path": "../out/champion_gen_109.json"
+  },
+  {
+    "elo": 1413.5087890625,
+    "path": "../out/champion_gen_085.json"
+  },
+  {
+    "elo": 1330.2659912109375,
+    "path": "../out/champion_gen_066.json"
+  },
+  {
+    "elo": 1155.377197265625,
+    "path": "../out/champion_gen_033.json"
+  },
+  {
+    "elo": 1230.4346923828125,
+    "path": "../out/champion_gen_043.json"
+  },
+  {
+    "elo": 1133.1787109375,
+    "path": "../out/champion_gen_049.json"
+  }
+]

@@ -1,6 +1,8 @@
 // Entry script: WASM-driven render loop
 import init, { WasmSimulation } from './wasm/pkg/sim_core.js';
 const Simulation = WasmSimulation;
+// Instantiate WASM once; reuse its memory buffer to avoid detachment
+const wasmModulePromise = init();
 
 /** @type {HTMLCanvasElement} */
 const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('battleCanvas'));
@@ -26,6 +28,8 @@ const resetBtn = /** @type {HTMLButtonElement} */ (document.getElementById('rese
 let sim;
 let mem;
 let paused = true;
+// store last fetched champion JSON
+let lastGenomeJson = null;
 
 // diagnostics
 let tick = 0;
@@ -33,6 +37,66 @@ let tpsCounter = 0;
 let lastTpsUpdate = performance.now();
 const tickElem = document.getElementById('tickCount');
 const tpsElem = document.getElementById('tpsCount');
+// Stats display elements
+/** @type {HTMLElement} */ const statsElem = /** @type {HTMLElement} */ (document.getElementById('stats'));
+/** @type {HTMLElement} */ const healthStatsElem = /** @type {HTMLElement} */ (document.getElementById('healthStats'));
+
+// Champion dropdown logic
+/** @type {HTMLSelectElement} */ const champSelect = /** @type {HTMLSelectElement} */ (document.getElementById('champSelect'));
+/** @type {HTMLElement} */ const champEloElem = /** @type {HTMLElement} */ (document.getElementById('champElo'));
+let champRatings = [];
+
+async function loadChampion() {
+  const path = champSelect.value;
+  console.log("▶️ fetch champion:", path);
+  paused = true; replayMode = false;
+  try {
+    const resp = await fetch(path);
+    console.log("   Response status:", resp.status);
+    if (!resp.ok) throw new Error(resp.statusText);
+    const json = await resp.text();
+    console.log("   JSON loaded, length:", json.length);
+    lastGenomeJson = json;
+    try {
+      const genome = JSON.parse(json);
+      champEloElem.textContent = `Fitness: ${genome.fitness.toFixed(2)}`;
+    } catch (_) {
+      champEloElem.textContent = `Fitness: N/A`;
+    }
+    await initSim(json);
+  } catch(e) {
+    alert('Failed to load champion JSON: ' + e);
+  }
+}
+
+async function loadEloRatings() {
+  try {
+    const resp = await fetch('out/elo_ratings.json');
+    if (!resp.ok) throw new Error(resp.statusText);
+    const list = await resp.json();
+    list.sort((a,b)=>b.elo - a.elo);
+    champRatings = list;
+    list.forEach(({path, elo})=> {
+      const opt = new Option(path, path);
+      champSelect.add(opt);
+    });
+    champSelect.onchange = () => { loadChampion(); };
+    champSelect.selectedIndex = 0;
+    await loadChampion();
+  } catch(e) {
+    console.warn('Failed to load elo_ratings.json:', e);
+  }
+}
+
+// Auto-load champion from URL param ?champ=
+{
+  const params = new URLSearchParams(window.location.search);
+  const cp = params.get('champ');
+  if (cp) {
+    // champInput.value = cp;
+    // loadChampBtn.click();
+  }
+}
 
 // ROYGBIV palette: index 0=red,1=orange,2=yellow,3=green,4=blue,5=indigo,6=violet
 const COLORS = ['#FF0000','#FFA500','#FFFF00','#00FF00','#0000FF','#4B0082','#EE82EE'];
@@ -96,6 +160,16 @@ function updateStats() {
 
 function draw() {
   ctx.clearRect(0,0,canvas.width,canvas.height);
+  // Debug: dump raw agent buffer for first agent (manual read)
+  {
+    const dbgPtr = sim.agentsPtr() >>> 2;
+    const dbgLen = sim.agentsLen();
+    const first6 = [];
+    for (let i = 0; i < Math.min(dbgLen, 6); i++) {
+      first6.push(mem[dbgPtr + i]);
+    }
+    console.log(`draw() → ptr=${dbgPtr}, len=${dbgLen}, first6=`, first6);
+  }
   const buf = 5, W = canvas.width, H = canvas.height;
   function getWrapPositions(x, y) {
     const pos = [[x, y]];
@@ -182,34 +256,80 @@ function draw() {
 }
 
 function loop() {
-  if (!paused) {
-    sim.step(); draw(); updateStats();
-    // update diagnostics
-    tick++;
-    tpsCounter++;
-    const now = performance.now();
-    if (now - lastTpsUpdate >= 1000) {
-      tpsElem.textContent = `TPS: ${tpsCounter}`;
-      tpsCounter = 0;
-      lastTpsUpdate = now;
+  if (replayMode && replayData) {
+    if (replayTick < replayData.length) {
+      const record = replayData[replayTick++];
+      drawReplay(record);
+      updateReplayStats(record);
+      tickElem.textContent = `Tick: ${record.tick}`;
     }
-    tickElem.textContent = `Tick: ${tick}`;
+  } else {
+    if (!paused) {
+      // Debug: catch WASM step panics
+      try {
+        sim.step();
+      } catch(e) {
+        console.error("WASM step() panic:", e);
+        paused = true;
+        return;
+      }
+      draw(); updateStats();
+      // update diagnostics
+      tick++;
+      tpsCounter++;
+      const now = performance.now();
+      if (now - lastTpsUpdate >= 1000) {
+        tpsElem.textContent = `TPS: ${tpsCounter}`;
+        tpsCounter = 0;
+        lastTpsUpdate = now;
+      }
+      tickElem.textContent = `Tick: ${tick}`;
+    }
   }
   requestAnimationFrame(loop);
 }
 
 startBtn.onclick = () => { paused = false; };
 pauseBtn.onclick = () => { paused = true; };
-resetBtn.onclick = () => { paused = true; initSim(); };
+resetBtn.onclick = () => { paused = true; loadChampion(); };
 
-async function initSim() {
-  const wasmModule = await init();
-  mem = new Float32Array(wasmModule.memory.buffer);
+// Replay mode variables
+let replayData = null;
+let replayTick = 0;
+let replayMode = false;
+// Controls for loading replay
+/** @type {HTMLInputElement} */ const replayInput = /** @type {HTMLInputElement} */ (document.getElementById('replayPath'));
+/** @type {HTMLButtonElement} */ const loadReplayBtn = /** @type {HTMLButtonElement} */ (document.getElementById('loadReplayBtn'));
+loadReplayBtn.onclick = async () => {
+  const path = replayInput.value;
+  const resp = await fetch(path);
+  const text = await resp.text();
+  replayData = text.trim().split('\n').map(line=>JSON.parse(line));
+  replayTick = 0;
+  replayMode = true;
+};
+
+async function initSim(genomeJson) {
+  // decide JSON to use: explicit or last stored
+  const json = genomeJson || lastGenomeJson;
+  console.log("▶️ initSim, use champion?", !!json);
+  // reuse the same WASM instance
+  const wasmModule = await wasmModulePromise;
   const o = Number(orangeInput.value);
   const y = Number(yellowInput.value);
   const g = Number(greenInput.value);
   const b = Number(blueInput.value);
-  sim = Simulation.new_nn_vs_naive(canvas.width, canvas.height, o, y, g, b);
+  if (json) {
+    console.log("   → new_champ_vs_naive");
+    sim = Simulation['new_champ_vs_naive'](canvas.width, canvas.height, o, y, g, b, json);
+  } else {
+    console.log("   → new_nn_vs_naive");
+    sim = Simulation.new_nn_vs_naive(canvas.width, canvas.height, o, y, g, b);
+  }
+  // rebind memory after allocation
+  mem = new Float32Array(wasmModule.memory.buffer);
+  // Debug: log agent buffer info
+  console.log("   agentsPtr:", sim.agentsPtr(), "agentsLen:", sim.agentsLen());
   draw(); updateStats();
   // Mode control binding
   /** @type {HTMLSelectElement} */
@@ -230,5 +350,38 @@ async function initSim() {
     .join('<br>');
 }
 
-initSim();
-loop();
+// Draw recorded state
+function drawReplay(record) {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const arr = record.agents;
+  for (let i = 0; i < arr.length; i += 6) {
+    const x = arr[i], y = arr[i+1], teamId = arr[i+2]|0, health = arr[i+3];
+    if (health <= 0) continue;
+    ctx.fillStyle = hexToRgba(TEAM_COLORS[teamId], Math.max(health/100, 0));
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, 2*Math.PI);
+    ctx.fill();
+  }
+}
+
+// Update stats from recorded state
+function updateReplayStats(record) {
+  const counts = [0,0,0,0];
+  let sumHealth = 0, aliveCount = 0;
+  const arr = record.agents;
+  for (let i = 0; i < arr.length; i += 6) {
+    const teamId = arr[i+2]|0, health = arr[i+3];
+    if (health > 0) {
+      counts[teamId]++;
+      sumHealth += health;
+      aliveCount++;
+    }
+  }
+  statsElem.textContent =
+    `Orange: ${counts[0]} | Yellow: ${counts[1]} | Green: ${counts[2]} | Blue: ${counts[3]}`;
+  const avg = aliveCount > 0 ? (sumHealth/aliveCount).toFixed(1) : '0.0';
+  healthStatsElem.textContent = `Avg Health: ${avg}`;
+}
+
+// Initialize champions dropdown and start simulation
+loadEloRatings().then(() => requestAnimationFrame(loop));

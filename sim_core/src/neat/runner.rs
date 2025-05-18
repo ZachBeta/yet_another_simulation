@@ -39,12 +39,19 @@ pub fn run_match(
     let initial_opponent_health = sim_cfg.health_max * ((evo_cfg.num_teams * evo_cfg.team_size - evo_cfg.team_size) as f32);
     let mut stats = MatchStats { ticks: 0, subject_team_health: 0.0, total_damage_inflicted: 0.0 };
     for tick in 0..evo_cfg.max_ticks {
-        // Profile simulation step
-        let phys_start = Instant::now();
-        sim.step();
-        let phys_ns = phys_start.elapsed().as_nanos() as u64;
-        PHYS_TIME_NS.fetch_add(phys_ns, Ordering::Relaxed);
-        PHYS_COUNT.fetch_add(1, Ordering::Relaxed);
+        // Profile simulation step (skip timing on wasm32)
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let phys_start = Instant::now();
+            sim.step();
+            let phys_ns = phys_start.elapsed().as_nanos() as u64;
+            PHYS_TIME_NS.fetch_add(phys_ns, Ordering::Relaxed);
+            PHYS_COUNT.fetch_add(1, Ordering::Relaxed);
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            sim.step();
+        }
         stats.ticks = tick + 1;
         if evo_cfg.early_exit {
             // check if subject or opponents are done

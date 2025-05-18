@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "inference_services"
+version = "0.1.0"
+description = "Benchmark HTTP vs gRPC ONNX inference services"
+authors = ["Zach Beta <zmorek@example.com>"]
+packages = [
+  { include = "http_service" }
+]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+fastapi = "0.95.0"
+uvicorn = { version = "0.22.0", extras = ["standard"] }
+
+[tool.poetry.dev-dependencies]
+honcho = "^1.0.2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
