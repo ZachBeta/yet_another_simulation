@@ -78,7 +78,21 @@ impl Brain for NeatBrain {
                 let vy = outputs[1];
                 let thrust = Vec2 { x: vx, y: vy };
                 if outputs[2] > 0.5 {
-                    return Action::Fire { weapon: Weapon::Laser { damage: 1.0, range: view.world_width } };
+                    // safety override: only fire if enemy within attack_range
+                    let mut min_dist = f32::MAX;
+                    for (i, &pos) in view.positions.iter().enumerate() {
+                        if i == view.self_idx || view.healths[i] <= 0.0 || view.teams[i] == view.self_team {
+                            continue;
+                        }
+                        let delta = view.self_pos.torus_delta(pos, view.world_width, view.world_height);
+                        let dist = delta.length();
+                        if dist < min_dist { min_dist = dist; }
+                    }
+                    if min_dist <= view.attack_range {
+                        return Action::Fire { weapon: Weapon::Laser { damage: 1.0, range: view.attack_range } };
+                    } else {
+                        return Action::Thrust(thrust);
+                    }
                 }
                 return Action::Thrust(thrust);
             }
@@ -104,9 +118,22 @@ impl Brain for NeatBrain {
             let vx = outputs[0];
             let vy = outputs[1];
             let thrust = Vec2 { x: vx, y: vy };
-            // Simple decode: fire if score > 0.5
+            // safety override: only fire if enemy within attack_range
             if outputs[2] > 0.5 {
-                return Action::Fire { weapon: Weapon::Laser { damage: 1.0, range: view.world_width } };
+                let mut min_dist = f32::MAX;
+                for (i, &pos) in view.positions.iter().enumerate() {
+                    if i == view.self_idx || view.healths[i] <= 0.0 || view.teams[i] == view.self_team {
+                        continue;
+                    }
+                    let delta = view.self_pos.torus_delta(pos, view.world_width, view.world_height);
+                    let dist = delta.length();
+                    if dist < min_dist { min_dist = dist; }
+                }
+                if min_dist <= view.attack_range {
+                    return Action::Fire { weapon: Weapon::Laser { damage: 1.0, range: view.attack_range } };
+                } else {
+                    return Action::Thrust(thrust);
+                }
             }
             return Action::Thrust(thrust);
         }

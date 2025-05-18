@@ -85,6 +85,10 @@ pub struct WorldView<'a> {
     pub world_width: f32,
     /// World height (toroidal)
     pub world_height: f32,
+    /// Maximum attack range (for lasers)
+    pub attack_range: f32,
+    /// Separation range for AI behaviors
+    pub sep_range: f32,
 }
 
 /// Agent decision interface.

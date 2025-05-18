@@ -137,6 +137,8 @@ impl Simulation {
                 wreck_pools: &wreck_pools,
                 world_width: w,
                 world_height: h,
+                attack_range: self.config.attack_range,
+                sep_range: self.config.sep_range,
             };
             // Sensor-based decision
             let inputs = self.scan(idx, self.config.scan_rays, self.config.scan_max_dist);
