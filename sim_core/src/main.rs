@@ -295,9 +295,58 @@ fn run_train(opts: &TrainOpts) {
         // Snapshot champion weights for continued use
         {
             let champ = population.hof[0].clone();
-            let json = serde_json::to_string(&champ).unwrap();
-            fs::write("out/champion_latest.json", &json).expect("Failed to write champion_latest");
-            fs::write(format!("out/champion_gen_{:03}.json", gen), &json)
+            let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+            let total_duration = start.elapsed().as_secs_f32();
+            let phys_ns = PHYS_TIME_NS.load(Ordering::Relaxed);
+            let phys_ct = PHYS_COUNT.load(Ordering::Relaxed);
+            let match_ns = MATCH_TIME_NS.load(Ordering::Relaxed);
+            let match_ct = MATCH_COUNT.load(Ordering::Relaxed);
+            let infer_ns = INFER_TIME_NS.load(Ordering::Relaxed);
+            let infer_ct = INFER_COUNT.load(Ordering::Relaxed);
+            let http_ns = HTTP_TIME_NS.load(Ordering::Relaxed);
+            let remote_ns = REMOTE_INFER_NS.load(Ordering::Relaxed);
+            let metadata = json!({
+                "timestamp": timestamp,
+                "duration_s": total_duration,
+                "generation": gen,
+                "config": {
+                    "device": opts.device,
+                    "workers": opts.workers,
+                    "runs": opts.runs,
+                    "duration_limit_s": opts.duration,
+                    "snapshot_interval": opts.snapshot_interval
+                },
+                "simulation_config": {
+                    "nearest_k_enemies": sim_cfg.nearest_k_enemies,
+                    "nearest_k_allies": sim_cfg.nearest_k_allies,
+                    "nearest_k_wrecks": sim_cfg.nearest_k_wrecks,
+                    "batch_size": sim_cfg.batch_size,
+                    "use_python_service": sim_cfg.use_python_service,
+                    "python_service_url": sim_cfg.python_service_url
+                },
+                "evolution_config": {
+                    "pop_size": evo_cfg.pop_size,
+                    "tournament_k": evo_cfg.tournament_k,
+                    "max_ticks": evo_cfg.max_ticks,
+                    "num_teams": evo_cfg.num_teams,
+                    "team_size": evo_cfg.team_size,
+                    "hof_size": evo_cfg.hof_size
+                },
+                "instrumentation": {
+                    "sim_avg_us": phys_ns as f64 / phys_ct as f64 / 1e3,
+                    "match_avg_ms": match_ns as f64 / match_ct as f64 / 1e6,
+                    "infer_avg_us": infer_ns as f64 / infer_ct as f64 / 1e3,
+                    "http_total_ms": http_ns as f64 / 1e6,
+                    "remote_infer_ms": remote_ns as f64 / 1e6
+                }
+            });
+            let output = json!({
+                "metadata": metadata,
+                "genome": champ
+            });
+            let json_str = serde_json::to_string_pretty(&output).unwrap();
+            fs::write("out/champion_latest.json", &json_str).expect("Failed to write champion_latest");
+            fs::write(format!("out/champion_gen_{:03}.json", gen), &json_str)
                 .expect("Failed to write champion_gen file");
         }
         if gen % opts.snapshot_interval == 0 || gen + 1 == max_gens {
