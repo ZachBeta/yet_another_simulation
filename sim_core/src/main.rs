@@ -84,6 +84,12 @@ struct TrainOpts {
     /// snapshot every N generations
     #[clap(long, default_value_t = 5)]
     snapshot_interval: usize,
+    /// number of generations between difficulty increases
+    #[clap(long, default_value_t = 10)]
+    difficulty_interval: usize,
+    /// threshold of avg_naive to bump difficulty
+    #[clap(long, default_value = "80.0")]
+    difficulty_threshold: f32,
     #[clap(long, action=ArgAction::SetTrue)]
     verbose: bool,
 }
@@ -97,6 +103,9 @@ struct TournamentOpts {
     /// verbose per-match logs
     #[clap(long, action=ArgAction::SetTrue)]
     verbose: bool,
+    /// include naive agent in tournament for Elo ranking
+    #[clap(long, action=ArgAction::SetTrue)]
+    include_naive: bool,
 }
 
 /// Run CPU or MPS inference bench and exit
@@ -224,6 +233,8 @@ fn run_train(opts: &TrainOpts) {
     let mut population = Population::new(&evo_cfg);
     let start = Instant::now();
     let mut gen = 0;
+    // Track base sensor range for difficulty adjustments
+    let base_scan_max_dist = sim_cfg.scan_max_dist;
     // run until generation or time limit
     while gen < max_gens && (opts.duration.map_or(true, |s| start.elapsed() < Duration::from_secs(s))) {
         // reset instrumentation counters
@@ -264,7 +275,34 @@ fn run_train(opts: &TrainOpts) {
         let fitnesses: Vec<f32> = population.genomes.iter().map(|g| g.fitness).collect();
         let best = *fitnesses.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
         let avg = fitnesses.iter().sum::<f32>() / fitnesses.len() as f32;
-        println!("Gen {}: best = {:.2}, avg = {:.2}", gen, best, avg);
+        let naive_vals: Vec<f32> = population.genomes.iter().map(|g| g.fitness_naive).collect();
+        let best_naive = *naive_vals.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+        let avg_naive = naive_vals.iter().sum::<f32>() / naive_vals.len() as f32;
+        println!(
+            "Gen {}: best = {:.2}, avg = {:.2}, naive_best = {:.2}, avg_naive = {:.2}",
+            gen, best, avg, best_naive, avg_naive
+        );
+        println!("=== Profiling Summary ===");
+        println!(
+            "Inference: {:.2} ms total over {} calls", infer_ns as f64 / 1e6, infer_ct
+        );
+        println!(
+            "Physics:   {:.2} ms total over {} steps", phys_ns as f64 / 1e6, phys_ct
+        );
+        println!("HTTP:      {:.2} ms total", http_ns as f64 / 1e6);
+        println!("Remote:    {:.2} ms total", remote_ns as f64 / 1e6);
+        // Bump difficulty if threshold & interval reached
+        if gen > 0
+           && gen % opts.difficulty_interval == 0
+           && avg_naive >= opts.difficulty_threshold
+           && sim_cfg.difficulty_level < sim_cfg.max_difficulty
+        {
+            sim_cfg.difficulty_level += 1;
+            // Shrink sensor range by 10% per level
+            sim_cfg.scan_max_dist = base_scan_max_dist * (1.0 - sim_cfg.difficulty_level as f32 * 0.1);
+            println!("[{:.2}s] ↑ Difficulty → level {}, scan_max_dist={:.2}",
+                     start.elapsed().as_secs_f32(), sim_cfg.difficulty_level, sim_cfg.scan_max_dist);
+        }
         // Hall of Fame
         println!("Hall of Fame (top {}):", evo_cfg.hof_size);
         for (i, g) in population.hof.iter().enumerate() {
@@ -338,7 +376,9 @@ fn run_train(opts: &TrainOpts) {
                     "infer_avg_us": infer_ns as f64 / infer_ct as f64 / 1e3,
                     "http_total_ms": http_ns as f64 / 1e6,
                     "remote_infer_ms": remote_ns as f64 / 1e6
-                }
+                },
+                // champion's baseline performance against NaiveAgent
+                "champion_fitness_naive": champ.fitness_naive
             });
             let output = json!({
                 "metadata": metadata,
@@ -402,7 +442,7 @@ fn run_tournament(opts: &TournamentOpts) {
     evo_cfg.team_size = 1;
     evo_cfg.max_ticks = 200;
     // Load champion genomes from JSON files
-    let mut champions: Vec<(String, Genome)> = fs::read_dir(&opts.pop_path).unwrap()
+    let champions: Vec<(String, Genome)> = fs::read_dir(&opts.pop_path).unwrap()
         .filter_map(|entry| {
             let path = entry.ok()?.path();
             if path.extension().and_then(|e| e.to_str()) != Some("json") {
@@ -414,18 +454,25 @@ fn run_tournament(opts: &TournamentOpts) {
             Some((fname, g))
         })
         .collect();
-    if champions.len() < 2 {
-        println!("Need at least two champions in {}", opts.pop_path);
+    if champions.is_empty() {
+        println!("Need at least one champion in {}", opts.pop_path);
         return;
     }
+    // Build participants list (champions and optional naive)
+    let mut participants: Vec<(String, Option<Genome>)> =
+        champions.into_iter().map(|(fname, g)| (fname, Some(g))).collect();
+    if opts.include_naive {
+        participants.push(("Naive".to_string(), None));
+    }
+    let total = participants.len();
     // Initialize Elo ratings at 1200
-    let mut ratings: HashMap<String, f32> = champions.iter()
-        .map(|(fname, _)| (format!("{}/{}", opts.pop_path, fname), 1200.0))
+    let mut ratings: HashMap<String, f32> = participants.iter()
+        .map(|(name, _)| (format!("{}/{}", opts.pop_path, name), 1200.0))
         .collect();
     let k_factor = 32.0;
     // Generate all unique pairs (i < j)
-    let pairs: Vec<(usize, usize)> = (0..champions.len())
-        .flat_map(|i| ((i+1)..champions.len()).map(move |j| (i, j)))
+    let pairs: Vec<(usize, usize)> = (0..total)
+        .flat_map(|i| ((i+1)..total).map(move |j| (i, j)))
         .collect();
     // Run matches in parallel and collect outcomes
     let total_pairs = pairs.len() as u64;
@@ -433,19 +480,26 @@ fn run_tournament(opts: &TournamentOpts) {
     let outcomes = pairs.into_par_iter()
         .progress_count(total_pairs)
         .map(|(i, j)| {
-            let (_, ref gi) = champions[i];
-            let (_, ref gj) = champions[j];
-            let champ_i = Box::new(NeatBrain::new(gi.clone(), sim_cfg.batch_size, String::new())) as Box<dyn Brain>;
-            let champ_j = Box::new(NeatBrain::new(gj.clone(), sim_cfg.batch_size, String::new())) as Box<dyn Brain>;
-            let stats = run_match(&sim_cfg, &evo_cfg, vec![(champ_i, 0), (champ_j, 1)]);
+            // instantiate competitor brains
+            let brain_i: Box<dyn Brain> = if let Some(ref gi) = participants[i].1 {
+                Box::new(NeatBrain::new(gi.clone(), sim_cfg.batch_size, String::new()))
+            } else {
+                Box::new(NaiveBrain(NaiveAgent::new(sim_cfg.max_speed, 10.0)))
+            };
+            let brain_j: Box<dyn Brain> = if let Some(ref gj) = participants[j].1 {
+                Box::new(NeatBrain::new(gj.clone(), sim_cfg.batch_size, String::new()))
+            } else {
+                Box::new(NaiveBrain(NaiveAgent::new(sim_cfg.max_speed, 10.0)))
+            };
+            let stats = run_match(&sim_cfg, &evo_cfg, vec![(brain_i, 0), (brain_j, 1)]);
             let win_i = stats.subject_team_health > 0.0;
             (i, j, win_i)
         }).collect::<Vec<_>>();
     println!(); // newline after progress bar
     // Sequentially update Elo ratings
     for (i, j, win_i) in outcomes {
-        let pi = format!("{}/{}", opts.pop_path, champions[i].0);
-        let pj = format!("{}/{}", opts.pop_path, champions[j].0);
+        let pi = format!("{}/{}", opts.pop_path, participants[i].0);
+        let pj = format!("{}/{}", opts.pop_path, participants[j].0);
         let ri = *ratings.get(&pi).unwrap();
         let rj = *ratings.get(&pj).unwrap();
         let expected_i = 1.0 / (1.0 + 10f32.powf((rj - ri) / 400.0));

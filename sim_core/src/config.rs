@@ -55,6 +55,10 @@ pub struct Config {
     pub python_service_url: Option<String>,
     /// Batch size for Python inference service
     pub batch_size: usize,
+    /// Curriculum: current difficulty level (0 = easiest)
+    pub difficulty_level: usize,
+    /// Maximum allowed difficulty level
+    pub max_difficulty: usize,
 }
 
 /// Selects distance calculation mode for AI
@@ -93,6 +97,8 @@ impl Default for Config {
             use_python_service: false,
             python_service_url: None,
             batch_size: 1,
+            difficulty_level: 0,
+            max_difficulty: 5,
         }
     }
 }

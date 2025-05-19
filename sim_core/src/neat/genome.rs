@@ -37,12 +37,14 @@ pub struct Genome {
     pub conns: Vec<ConnGene>,
     /// Accumulated fitness of this genome
     pub fitness: f32,
+    /// Fitness against NaiveAgent baseline
+    pub fitness_naive: f32,
 }
 
 impl Genome {
     /// Create an initial minimal genome
     pub fn new() -> Self {
-        Genome { nodes: Vec::new(), conns: Vec::new(), fitness: 0.0 }
+        Genome { nodes: Vec::new(), conns: Vec::new(), fitness: 0.0, fitness_naive: 0.0 }
     }
 
     /// Initialize as minimal fully-connected network
@@ -297,6 +299,7 @@ mod tests {
                 ConnGene { in_node: 1, out_node: 2, weight: 4.56, enabled: true, innovation: 1 },
             ],
             fitness: 0.0,
+            fitness_naive: 0.0,
         };
         let layers = genome.layers();
         assert_eq!(layers.len(), 1);
@@ -320,6 +323,7 @@ mod tests {
                 ConnGene { in_node: 1, out_node: 2, weight: 0.12, enabled: true, innovation: 1 },
             ],
             fitness: 0.0,
+            fitness_naive: 0.0,
         };
         let layers = genome.layers();
         assert_eq!(layers.len(), 2);

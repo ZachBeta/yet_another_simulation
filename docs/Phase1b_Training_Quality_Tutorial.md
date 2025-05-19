@@ -82,6 +82,33 @@ This tutorial walks you through implementing five key improvements to your NEAT 
 2. Score each hyperparam set by win-rate.
 3. Rank and persist top configurations.
 
+## 6. Monitoring Training Progress
+
+**Run a 5-minute training session**:
+
+```bash
+cargo run -- train --duration 300 --workers 4
+```
+
+**Live logs** show per-generation stats:
+```text
+Gen 1: best = 120.50, avg = 90.00, naive_best = 50.00, avg_naive = 45.00
+...
+=== Profiling Summary ===
+Inference: 400.00 ms total over 4000 calls
+Physics:   350.00 ms total over 10000 steps
+HTTP:      0.00 ms total
+Remote:    0.00 ms total
+```
+
+**Elo Rankings vs. Naive**:
+```bash
+cargo run -- tournament --pop-path out --include-naive
+jq . out/elo_ratings.json
+```
+
+Optionally parse `champion_gen_*.json` to plot fitness vs. generation.
+
 ## Putting It All Together
 
 1. **Branch**: create a `phase1b` feature branch in `sim_core`.

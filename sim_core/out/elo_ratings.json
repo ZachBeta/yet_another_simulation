@@ -1,0 +1,82 @@
+[
+  {
+    "elo": 1412.3233642578125,
+    "path": "out/Naive"
+  },
+  {
+    "elo": 1062.4417724609375,
+    "path": "out/champion_gen_005.json"
+  },
+  {
+    "elo": 1320.8084716796875,
+    "path": "out/champion_gen_075.json"
+  },
+  {
+    "elo": 1029.17724609375,
+    "path": "out/champion_gen_010.json"
+  },
+  {
+    "elo": 1088.6920166015625,
+    "path": "out/champion_gen_015.json"
+  },
+  {
+    "elo": 1166.6605224609375,
+    "path": "out/champion_gen_030.json"
+  },
+  {
+    "elo": 1146.107177734375,
+    "path": "out/champion_gen_060.json"
+  },
+  {
+    "elo": 1094.007568359375,
+    "path": "out/champion_latest.json"
+  },
+  {
+    "elo": 1378.5550537109375,
+    "path": "out/champion_gen_035.json"
+  },
+  {
+    "elo": 1259.21923828125,
+    "path": "out/champion_gen_045.json"
+  },
+  {
+    "elo": 1120.2274169921875,
+    "path": "out/champion_gen_040.json"
+  },
+  {
+    "elo": 1281.402587890625,
+    "path": "out/champion_gen_065.json"
+  },
+  {
+    "elo": 1303.279541015625,
+    "path": "out/champion_gen_025.json"
+  },
+  {
+    "elo": 1361.599365234375,
+    "path": "out/champion_gen_055.json"
+  },
+  {
+    "elo": 1015.2264404296875,
+    "path": "out/champion_gen_020.json"
+  },
+  {
+    "elo": 1341.2547607421875,
+    "path": "out/champion_gen_080.json"
+  },
+  {
+    "elo": 1236.6788330078125,
+    "path": "out/champion_gen_050.json"
+  },
+  {
+    "elo": 1213.74853515625,
+    "path": "out/champion_gen_085.json"
+  },
+  {
+    "elo": 1190.411376953125,
+    "path": "out/champion_gen_070.json"
+  },
+  {
+    "elo": 978.1786499023438,
+    "path": "out/champion_gen_000.json"
+  }
+]

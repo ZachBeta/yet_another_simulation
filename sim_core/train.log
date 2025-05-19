@@ -1,0 +1,71 @@
+[0.00s] --- Generation 0 ---
+ Evaluation took: 1.143592792s
+  Perf: sim avg = 172.98µs/tick (19280 ticks); match avg = 33.37ms/match (100 matches)
+        infer avg = 87.22µs (36680); http total = 0.00ms; remote infer = 0.00ms
+Gen 0: best = 162.00, avg = 100.00
+          naive_best = 56.60, avg_naive = 16.80
+Hall of Fame (top 5):
+  HoF 0: 162.00
+  HoF 1: 148.78
+  HoF 2: 118.33
+  HoF 3: 92.78
+  HoF 4: 80.22
+  Replay: ticks = 200, health = 37.00
+[1.20s] --- Generation 1 ---
+ Evaluation took: 1.184877208s
+  Perf: sim avg = 180.58µs/tick (19280 ticks); match avg = 34.84ms/match (100 matches)
+        infer avg = 91.25µs (36680); http total = 0.00ms; remote infer = 0.00ms
+Gen 1: best = 133.22, avg = 100.00
+          naive_best = 56.60, avg_naive = 27.30
+Hall of Fame (top 5):
+  HoF 0: 133.22
+  HoF 1: 132.89
+  HoF 2: 131.22
+  HoF 3: 124.78
+  HoF 4: 119.89
+  Replay: ticks = 200, health = 77.00
+[2.44s] --- Generation 2 ---
+ Evaluation took: 1.214286083s
+  Perf: sim avg = 184.69µs/tick (19280 ticks); match avg = 35.63ms/match (100 matches)
+        infer avg = 93.44µs (36680); http total = 0.00ms; remote infer = 0.00ms
+Gen 2: best = 130.56, avg = 100.00
+          naive_best = 56.60, avg_naive = 28.00
+Hall of Fame (top 5):
+  HoF 0: 130.56
+  HoF 1: 130.56
+  HoF 2: 128.78
+  HoF 3: 123.33
+  HoF 4: 118.44
+  Replay: ticks = 200, health = 55.00
+[3.71s] --- Generation 3 ---
+ Evaluation took: 1.251851792s
+  Perf: sim avg = 186.77µs/tick (19880 ticks); match avg = 37.15ms/match (100 matches)
+        infer avg = 94.37µs (37880); http total = 0.00ms; remote infer = 0.00ms
+Gen 3: best = 112.22, avg = 100.00
+          naive_best = 56.60, avg_naive = 46.30
+Hall of Fame (top 5):
+  HoF 0: 112.22
+  HoF 1: 111.33
+  HoF 2: 101.00
+  HoF 3: 100.89
+  HoF 4: 100.89
+  Replay: ticks = 200, health = 47.00
+[5.02s] --- Generation 4 ---
+ Evaluation took: 1.269659125s
+  Perf: sim avg = 189.20µs/tick (19880 ticks); match avg = 37.64ms/match (100 matches)
+        infer avg = 95.61µs (37880); http total = 0.00ms; remote infer = 0.00ms
+Gen 4: best = 105.56, avg = 100.00
+          naive_best = 56.60, avg_naive = 51.60
+Hall of Fame (top 5):
+  HoF 0: 105.56
+  HoF 1: 105.56
+  HoF 2: 105.56
+  HoF 3: 105.00
+  HoF 4: 105.00
+  Replay: ticks = 200, health = 47.00
+=== Profiling Summary ===
+Inference: 3659.96 ms total over 38280 calls
+Physics:   3761.39 ms total over 19880 steps
+HTTP:      0.00 ms total
+Remote:    0.00 ms total
+Trained 5 gens in 6.3s → 0.79 gens/sec

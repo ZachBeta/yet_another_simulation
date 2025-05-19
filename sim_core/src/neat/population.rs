@@ -4,6 +4,7 @@ use super::config::EvolutionConfig;
 use super::genome::Genome;
 use super::runner::run_match;
 use super::brain::NeatBrain;
+use crate::ai::{NaiveAgent, NaiveBrain};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use rayon::prelude::*;
@@ -34,43 +35,48 @@ impl Population {
         }
         // Snapshot for opponent sampling
         let snapshot = self.genomes.clone();
-        let num_others = evo_cfg.num_teams - 1;
-        // Parallel evaluation using Rayon
+        // Round-robin evaluation using Rayon
+        let n = snapshot.len();
         self.genomes.par_iter_mut().enumerate().for_each(|(i, genome)| {
-            let mut rng = thread_rng();
-            for _ in 0..evo_cfg.tournament_k {
-                // sample opponents
-                let mut pool: Vec<usize> = (0..snapshot.len()).filter(|&j| j != i).collect();
-                pool.shuffle(&mut rng);
-                let opponents = &pool[..num_others];
-                // build agents vector
+            for j in 0..n {
+                if i == j {
+                    continue;
+                }
                 let mut agents: Vec<(Box<dyn Brain>, u32)> = Vec::new();
-                // subject
-                for _ in 0..evo_cfg.team_size {
-                    agents.push((Box::new(NeatBrain::new(
-                        genome.clone(),
-                        sim_cfg.batch_size,
-                        sim_cfg.python_service_url.clone().unwrap_or_default(),
-                    )) as Box<dyn Brain>, 0));
-                }
-                // opponents
-                for (idx, &opp) in opponents.iter().enumerate() {
-                    let team_id = (idx + 1) as u32;
-                    for _ in 0..evo_cfg.team_size {
-                        agents.push((Box::new(NeatBrain::new(
-                            snapshot[opp].clone(),
-                            sim_cfg.batch_size,
-                            sim_cfg.python_service_url.clone().unwrap_or_default(),
-                        )) as Box<dyn Brain>, team_id));
-                    }
-                }
+                // subject agent
+                agents.push((Box::new(NeatBrain::new(
+                    genome.clone(),
+                    sim_cfg.batch_size,
+                    sim_cfg.python_service_url.clone().unwrap_or_default(),
+                )) as Box<dyn Brain>, 0));
+                // opponent agent
+                agents.push((Box::new(NeatBrain::new(
+                    snapshot[j].clone(),
+                    sim_cfg.batch_size,
+                    sim_cfg.python_service_url.clone().unwrap_or_default(),
+                )) as Box<dyn Brain>, 1));
                 let stats = run_match(sim_cfg, evo_cfg, agents);
                 let fit = evo_cfg.fitness_fn.compute(&stats);
                 genome.fitness += fit;
             }
-            // average fitness
-            genome.fitness /= evo_cfg.tournament_k as f32;
+            // normalize fitness
+            genome.fitness /= (n - 1) as f32;
         });
+        // NaiveAgent baseline evaluation
+        for genome in &mut self.genomes {
+            let naive = NaiveBrain(NaiveAgent::new(1.2, 0.8));
+            let mut agents: Vec<(Box<dyn Brain>, u32)> = Vec::new();
+            // subject
+            agents.push((Box::new(NeatBrain::new(
+                genome.clone(),
+                sim_cfg.batch_size,
+                sim_cfg.python_service_url.clone().unwrap_or_default(),
+            )) as Box<dyn Brain>, 0));
+            // naive opponent
+            agents.push((Box::new(naive) as Box<dyn Brain>, 1));
+            let stats = run_match(sim_cfg, evo_cfg, agents);
+            genome.fitness_naive = evo_cfg.fitness_fn.compute(&stats);
+        }
         // update hall-of-fame
         self.genomes.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap());
         self.hof = self.genomes.iter().take(evo_cfg.hof_size).cloned().collect();
