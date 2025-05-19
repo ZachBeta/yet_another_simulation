@@ -21,6 +21,8 @@ pub struct MatchStats {
     pub ticks: usize,
     pub subject_team_health: f32,
     pub total_damage_inflicted: f32,
+    /// Number of opponent units killed
+    pub kills: usize,
 }
 
 /// Run a single match, return raw statistics
@@ -43,7 +45,7 @@ pub fn run_match(
     let n_agents = sim.agents_data.len() / AGENT_STRIDE;
     // Initial total opponent health
     let initial_opponent_health = sim_cfg.health_max * ((evo_cfg.num_teams * evo_cfg.team_size - evo_cfg.team_size) as f32);
-    let mut stats = MatchStats { ticks: 0, subject_team_health: 0.0, total_damage_inflicted: 0.0 };
+    let mut stats = MatchStats { ticks: 0, subject_team_health: 0.0, total_damage_inflicted: 0.0, kills: 0 };
     for tick in 0..evo_cfg.max_ticks {
         // Profile simulation step (skip timing on wasm32)
         #[cfg(not(target_arch = "wasm32"))]
@@ -94,6 +96,18 @@ pub fn run_match(
     }
     stats.subject_team_health = team_health;
     stats.total_damage_inflicted = initial_opponent_health - opp_health;
+    // compute kill count: initial opponents minus remaining alive
+    let mut opp_alive = 0;
+    for i in 0..n_agents {
+        let base = i * AGENT_STRIDE;
+        let team = sim.agents_data[base + IDX_TEAM] as u32;
+        let health = sim.agents_data[base + IDX_HEALTH];
+        if team != subject_team && health > 0.0 {
+            opp_alive += 1;
+        }
+    }
+    let initial_opponents = n_agents.saturating_sub(evo_cfg.team_size as usize);
+    stats.kills = initial_opponents.saturating_sub(opp_alive);
     #[cfg(not(target_arch = "wasm32"))]
     {
         let match_ns = match_start.elapsed().as_nanos() as u64;
@@ -127,7 +141,7 @@ pub fn run_match_record<P: AsRef<Path>>(
     );
     let n_agents = sim.agents_data.len() / AGENT_STRIDE;
     let initial_opp_health = sim_cfg.health_max * ((evo_cfg.num_teams * evo_cfg.team_size - evo_cfg.team_size) as f32);
-    let mut stats = MatchStats { ticks: 0, subject_team_health: 0.0, total_damage_inflicted: 0.0 };
+    let mut stats = MatchStats { ticks: 0, subject_team_health: 0.0, total_damage_inflicted: 0.0, kills: 0 };
     for tick in 0..evo_cfg.max_ticks {
         sim.step();
         stats.ticks = tick + 1;
@@ -156,5 +170,17 @@ pub fn run_match_record<P: AsRef<Path>>(
     }
     stats.subject_team_health = team_health;
     stats.total_damage_inflicted = initial_opp_health - opp_health;
+    // compute kill count: initial opponents minus remaining alive
+    let mut opp_alive = 0;
+    for i in 0..n_agents {
+        let base = i * AGENT_STRIDE;
+        let team = sim.agents_data[base + IDX_TEAM] as u32;
+        let health = sim.agents_data[base + IDX_HEALTH];
+        if team != subject_team && health > 0.0 {
+            opp_alive += 1;
+        }
+    }
+    let initial_opponents = n_agents.saturating_sub(evo_cfg.team_size as usize);
+    stats.kills = initial_opponents.saturating_sub(opp_alive);
     stats
 }

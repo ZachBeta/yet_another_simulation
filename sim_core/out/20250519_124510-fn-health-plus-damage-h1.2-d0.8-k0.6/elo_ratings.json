@@ -1,0 +1,18 @@
+[
+  {
+    "elo": 1155.61376953125,
+    "path": "out/20250519_124510-fn-health-plus-damage-h1.2-d0.8-k0.6/champion_gen_000.json"
+  },
+  {
+    "elo": 1184.834716796875,
+    "path": "out/20250519_124510-fn-health-plus-damage-h1.2-d0.8-k0.6/champion_gen_010.json"
+  },
+  {
+    "elo": 1245.7237548828125,
+    "path": "out/20250519_124510-fn-health-plus-damage-h1.2-d0.8-k0.6/Naive"
+  },
+  {
+    "elo": 1213.8277587890625,
+    "path": "out/20250519_124510-fn-health-plus-damage-h1.2-d0.8-k0.6/champion_gen_005.json"
+  }
+]

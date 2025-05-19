@@ -1,5 +1,5 @@
 use sim_core::config::Config;
-use sim_core::neat::config::EvolutionConfig;
+use sim_core::neat::config::{EvolutionConfig, FitnessFn};
 use sim_core::neat::population::Population;
 use sim_core::neat::runner::{PHYS_TIME_NS, PHYS_COUNT, MATCH_TIME_NS, MATCH_COUNT, MatchStats};
 use sim_core::neat::runner::run_match_record;
@@ -25,6 +25,10 @@ use serde_json;
 use sim_core::ai::{NaiveAgent, NaiveBrain};
 use std::collections::HashMap;
 use indicatif::ParallelProgressIterator;
+use std::collections::VecDeque;
+use clap::ValueEnum;
+use chrono::Utc;
+use rand::{rngs::StdRng, Rng, SeedableRng};
 
 /// neat_train CLI with `bench`, `train`, and `tournament` subcommands
 #[derive(Parser, Debug)]
@@ -92,6 +96,39 @@ struct TrainOpts {
     difficulty_threshold: f32,
     #[clap(long, action=ArgAction::SetTrue)]
     verbose: bool,
+    /// generations without improvement before triggering recovery
+    #[clap(long, default_value_t = 20)]
+    stagnation_window: usize,
+    /// number of random genomes to inject when stagnated
+    #[clap(long, default_value_t = 2)]
+    inject_count: usize,
+    /// scale factor to multiply mutation rates during recovery
+    #[clap(long, default_value_t = 2.0)]
+    mutation_scale: f32,
+    /// Which fitness function to use
+    #[clap(long, value_enum, default_value_t = FitnessFnArg::HealthPlusDamage)]
+    fitness_fn: FitnessFnArg,
+    /// Weight for time-to-win bonus (only for time-based fitness)
+    #[clap(long, default_value_t = 0.1)]
+    time_bonus_weight: f32,
+    /// Weight for health in fitness
+    #[clap(long, default_value_t = 1.0)]
+    w_health: f32,
+    /// Weight for damage in fitness
+    #[clap(long, default_value_t = 1.0)]
+    w_damage: f32,
+    /// Weight for kills in fitness
+    #[clap(long, default_value_t = 0.5)]
+    w_kills: f32,
+    /// Optional override for run ID
+    #[clap(long)]
+    run_id: Option<String>,
+    /// Random seed for scenario randomization
+    #[clap(long)]
+    random_seed: Option<u64>,
+    /// Max variation for map dimensions (±)
+    #[clap(long, default_value_t = 0)]
+    map_var: u32,
 }
 
 /// Options for the `tournament` subcommand
@@ -106,6 +143,13 @@ struct TournamentOpts {
     /// include naive agent in tournament for Elo ranking
     #[clap(long, action=ArgAction::SetTrue)]
     include_naive: bool,
+}
+
+/// Available fitness function types
+#[derive(ValueEnum, Clone, Debug)]
+enum FitnessFnArg {
+    HealthPlusDamage,
+    HealthPlusDamageTime,
 }
 
 /// Run CPU or MPS inference bench and exit
@@ -219,6 +263,15 @@ fn run_bench(opts: &BenchOpts) {
 fn run_train(opts: &TrainOpts) {
     ThreadPoolBuilder::new().num_threads(opts.workers).build_global().unwrap();
     fs::create_dir_all("out").unwrap();
+    // generate run-specific ID and create output directory
+    let ts = Utc::now().format("%Y%m%d_%H%M%S").to_string();
+    let fn_name = opts.fitness_fn.to_possible_value().unwrap().get_name().to_string();
+    let id = opts.run_id.clone().unwrap_or_else(|| format!(
+        "{}-fn-{}-h{:.1}-d{:.1}-k{:.1}",
+        ts, fn_name, opts.w_health, opts.w_damage, opts.w_kills
+    ));
+    let out_dir = format!("out/{}", id);
+    fs::create_dir_all(&out_dir).unwrap();
     let mut sim_cfg = Config::default();
     sim_cfg.use_python_service = false;
     sim_cfg.python_service_url = None;
@@ -235,8 +288,28 @@ fn run_train(opts: &TrainOpts) {
     let mut gen = 0;
     // Track base sensor range for difficulty adjustments
     let base_scan_max_dist = sim_cfg.scan_max_dist;
+    // keep original mutation rates for auto-recovery
+    let orig_node_rate = evo_cfg.mutation_add_node_rate;
+    let orig_conn_rate = evo_cfg.mutation_add_conn_rate;
+    let mut recovery_active = false;
+    let mut best_history: VecDeque<f32> = VecDeque::new();
+    // RNG for scenario randomization
+    let mut rng = match opts.random_seed {
+        Some(s) => StdRng::seed_from_u64(s),
+        None => StdRng::from_entropy(),
+    };
+    let base_map_w = evo_cfg.map_width;
+    let base_map_h = evo_cfg.map_height;
     // run until generation or time limit
     while gen < max_gens && (opts.duration.map_or(true, |s| start.elapsed() < Duration::from_secs(s))) {
+        // scenario randomization per generation
+        if opts.map_var > 0 {
+            let delta_w = rng.gen_range(-(opts.map_var as i32)..=(opts.map_var as i32));
+            let delta_h = rng.gen_range(-(opts.map_var as i32)..=(opts.map_var as i32));
+            evo_cfg.map_width = (base_map_w as i32 + delta_w).max(1) as u32;
+            evo_cfg.map_height = (base_map_h as i32 + delta_h).max(1) as u32;
+            println!("[{:.2}s] randomized map size → {}x{}", start.elapsed().as_secs_f32(), evo_cfg.map_width, evo_cfg.map_height);
+        }
         // reset instrumentation counters
         PHYS_TIME_NS.store(0, Ordering::Relaxed);
         PHYS_COUNT.store(0, Ordering::Relaxed);
@@ -289,8 +362,12 @@ fn run_train(opts: &TrainOpts) {
         println!(
             "Physics:   {:.2} ms total over {} steps", phys_ns as f64 / 1e6, phys_ct
         );
-        println!("HTTP:      {:.2} ms total", http_ns as f64 / 1e6);
-        println!("Remote:    {:.2} ms total", remote_ns as f64 / 1e6);
+        println!(
+            "HTTP:      {:.2} ms total", http_ns as f64 / 1e6
+        );
+        println!(
+            "Remote:    {:.2} ms total", remote_ns as f64 / 1e6
+        );
         // Bump difficulty if threshold & interval reached
         if gen > 0
            && gen % opts.difficulty_interval == 0
@@ -309,8 +386,6 @@ fn run_train(opts: &TrainOpts) {
             println!("  HoF {}: {:.2}", i, g.fitness);
         }
         // Replay champion vs second-best
-        let gen_dir = format!("out/gen_{:03}", gen);
-        fs::create_dir_all(&gen_dir).expect("Failed to create output dir");
         if population.hof.len() > 1 {
             let champ = population.hof[0].clone();
             let opp = population.hof[1].clone();
@@ -326,14 +401,14 @@ fn run_train(opts: &TrainOpts) {
                     sim_cfg.python_service_url.clone().unwrap_or_default(),
                 )) as Box<dyn Brain>, 1),
             ];
-            let path = format!("{}/champ_replay.jsonl", gen_dir);
+            let path = format!("{}/champ_replay.jsonl", out_dir);
             let stats = run_match_record(&path, &sim_cfg, &evo_cfg, agents);
             println!("  Replay: ticks = {}, health = {:.2}", stats.ticks, stats.subject_team_health);
         }
         // Snapshot champion weights for continued use
         {
             let champ = population.hof[0].clone();
-            let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+            let timestamp = Utc::now().format("%Y%m%d_%H%M%S").to_string();
             let total_duration = start.elapsed().as_secs_f32();
             let phys_ns = PHYS_TIME_NS.load(Ordering::Relaxed);
             let phys_ct = PHYS_COUNT.load(Ordering::Relaxed);
@@ -352,7 +427,15 @@ fn run_train(opts: &TrainOpts) {
                     "workers": opts.workers,
                     "runs": opts.runs,
                     "duration_limit_s": opts.duration,
-                    "snapshot_interval": opts.snapshot_interval
+                    "snapshot_interval": opts.snapshot_interval,
+                    "fitness_fn": fn_name,
+                    "time_bonus_weight": opts.time_bonus_weight,
+                    "w_health": opts.w_health,
+                    "w_damage": opts.w_damage,
+                    "w_kills": opts.w_kills,
+                    "random_seed": opts.random_seed,
+                    "map_var": opts.map_var,
+                    "run_id": opts.run_id
                 },
                 "simulation_config": {
                     "nearest_k_enemies": sim_cfg.nearest_k_enemies,
@@ -360,7 +443,11 @@ fn run_train(opts: &TrainOpts) {
                     "nearest_k_wrecks": sim_cfg.nearest_k_wrecks,
                     "batch_size": sim_cfg.batch_size,
                     "use_python_service": sim_cfg.use_python_service,
-                    "python_service_url": sim_cfg.python_service_url
+                    "python_service_url": sim_cfg.python_service_url,
+                    "map_width": evo_cfg.map_width,
+                    "map_height": evo_cfg.map_height,
+                    "difficulty_level": sim_cfg.difficulty_level,
+                    "max_difficulty": sim_cfg.max_difficulty
                 },
                 "evolution_config": {
                     "pop_size": evo_cfg.pop_size,
@@ -369,6 +456,12 @@ fn run_train(opts: &TrainOpts) {
                     "num_teams": evo_cfg.num_teams,
                     "team_size": evo_cfg.team_size,
                     "hof_size": evo_cfg.hof_size
+                },
+                "fitness_weights": {
+                    "health": evo_cfg.w_health,
+                    "damage": evo_cfg.w_damage,
+                    "kills": evo_cfg.w_kills,
+                    "time_bonus": evo_cfg.time_bonus_weight
                 },
                 "instrumentation": {
                     "sim_avg_us": phys_ns as f64 / phys_ct as f64 / 1e3,
@@ -385,22 +478,56 @@ fn run_train(opts: &TrainOpts) {
                 "genome": champ
             });
             let json_str = serde_json::to_string_pretty(&output).unwrap();
-            fs::write("out/champion_latest.json", &json_str).expect("Failed to write champion_latest");
-            fs::write(format!("out/champion_gen_{:03}.json", gen), &json_str)
+            fs::write(format!("{}/champion_latest.json", out_dir), &json_str).expect("Failed to write champion_latest");
+            fs::write(format!("{}/champion_gen_{:03}.json", out_dir, gen), &json_str)
                 .expect("Failed to write champion_gen file");
         }
         if gen % opts.snapshot_interval == 0 || gen + 1 == max_gens {
             let champ = &population.hof[0];
             let json = serde_json::to_string(champ).unwrap();
-            fs::write(format!("out/champion_gen_{:03}.json", gen), &json).unwrap();
-            fs::write("out/champion_latest.json", &json).unwrap();
+            fs::write(format!("{}/champion_gen_{:03}.json", out_dir, gen), &json).unwrap();
+            fs::write(format!("{}/champion_latest.json", out_dir), &json).unwrap();
             if opts.verbose {
-                eprintln!("[{:.1}s] ▶ snapshot champion → out/champion_gen_{:03}.json", start.elapsed().as_secs_f32(), gen);
+                eprintln!("[{:.1}s] ▶ snapshot champion → {}/champion_gen_{:03}.json", start.elapsed().as_secs_f32(), out_dir, gen);
             }
+        }
+        // detect stagnation over sliding window
+        best_history.push_back(best);
+        if best_history.len() > opts.stagnation_window {
+            best_history.pop_front();
+        }
+        if best_history.len() == opts.stagnation_window
+            && best_history.iter().all(|&v| (v - best_history[0]).abs() < f32::EPSILON)
+        {
+            println!("No improvement in {} gens; injecting {} random genomes and scaling mutation x{:.2}",
+                     opts.stagnation_window, opts.inject_count, opts.mutation_scale);
+            evo_cfg.mutation_add_node_rate = orig_node_rate * opts.mutation_scale;
+            evo_cfg.mutation_add_conn_rate = orig_conn_rate * opts.mutation_scale;
+            recovery_active = true;
         }
         if gen + 1 < max_gens {
             population.reproduce(&evo_cfg);
+            // apply auto-recovery: inject random genomes and revert rates
+            if recovery_active {
+                population.genomes.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap());
+                for _ in 0..opts.inject_count {
+                    population.genomes.pop();
+                    population.genomes.push(Genome::new());
+                }
+                evo_cfg.mutation_add_node_rate = orig_node_rate;
+                evo_cfg.mutation_add_conn_rate = orig_conn_rate;
+                recovery_active = false;
+            }
         }
+        // apply selected fitness function and weight
+        evo_cfg.fitness_fn = match opts.fitness_fn {
+            FitnessFnArg::HealthPlusDamage => FitnessFn::HealthPlusDamage,
+            FitnessFnArg::HealthPlusDamageTime => FitnessFn::HealthPlusDamageTime,
+        };
+        evo_cfg.time_bonus_weight = opts.time_bonus_weight;
+        evo_cfg.w_health = opts.w_health;
+        evo_cfg.w_damage = opts.w_damage;
+        evo_cfg.w_kills = opts.w_kills;
         gen += 1;
     }
     // Print cumulative profiling results

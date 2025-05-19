@@ -56,7 +56,7 @@ impl Population {
                     sim_cfg.python_service_url.clone().unwrap_or_default(),
                 )) as Box<dyn Brain>, 1));
                 let stats = run_match(sim_cfg, evo_cfg, agents);
-                let fit = evo_cfg.fitness_fn.compute(&stats);
+                let fit = evo_cfg.fitness_fn.compute(&stats, &evo_cfg);
                 genome.fitness += fit;
             }
             // normalize fitness
@@ -75,7 +75,7 @@ impl Population {
             // naive opponent
             agents.push((Box::new(naive) as Box<dyn Brain>, 1));
             let stats = run_match(sim_cfg, evo_cfg, agents);
-            genome.fitness_naive = evo_cfg.fitness_fn.compute(&stats);
+            genome.fitness_naive = evo_cfg.fitness_fn.compute(&stats, &evo_cfg);
         }
         // update hall-of-fame
         self.genomes.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap());

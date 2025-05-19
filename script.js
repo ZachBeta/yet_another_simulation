@@ -76,10 +76,20 @@ async function loadEloRatings() {
     const list = await resp.json();
     list.sort((a,b)=>b.elo - a.elo);
     champRatings = list;
-    list.forEach(({path, elo})=> {
-      const opt = new Option(path, path);
+    const TOP_K = 10;
+    list.slice(0, TOP_K).forEach(({path, elo}) => {
+      const label = `${path} (Elo ${elo.toFixed(1)})`;
+      const opt = new Option(label, path);
       champSelect.add(opt);
     });
+    // Always include the latest champion snapshot
+    if (list.length > 0) {
+      // derive directory from first entry
+      const dir = list[0].path.substring(0, list[0].path.lastIndexOf('/'));
+      const latestPath = `${dir}/champion_latest.json`;
+      const latestOpt = new Option('Latest Champion', latestPath);
+      champSelect.add(latestOpt, 0);
+    }
     champSelect.onchange = () => { loadChampion(); };
     champSelect.selectedIndex = 0;
     await loadChampion();
@@ -93,8 +103,10 @@ async function loadEloRatings() {
   const params = new URLSearchParams(window.location.search);
   const cp = params.get('champ');
   if (cp) {
-    // champInput.value = cp;
-    // loadChampBtn.click();
+    // Add custom champion from URL param to dropdown
+    const opt = new Option(`[Param] ${cp}`, cp);
+    champSelect.add(opt, 0);
+    champSelect.value = cp;
   }
 }
 
