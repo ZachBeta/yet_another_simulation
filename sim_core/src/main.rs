@@ -29,6 +29,8 @@ use std::collections::VecDeque;
 use clap::ValueEnum;
 use chrono::Utc;
 use rand::{rngs::StdRng, Rng, SeedableRng};
+use std::path::Path;
+use serde::{Serialize, Deserialize};
 
 /// neat_train CLI with `bench`, `train`, and `tournament` subcommands
 #[derive(Parser, Debug)]
@@ -46,6 +48,8 @@ enum Command {
     Train(TrainOpts),
     /// Evaluate champions against a naive agent
     Tournament(TournamentOpts),
+    /// Full 2v2 pipeline: train, tournament, and replay
+    Pipeline(PipelineOpts),
 }
 
 /// Options for the `bench` subcommand
@@ -94,7 +98,8 @@ struct TrainOpts {
     /// threshold of avg_naive to bump difficulty
     #[clap(long, default_value = "80.0")]
     difficulty_threshold: f32,
-    #[clap(long, action=ArgAction::SetTrue)]
+    /// verbose per-match logs during training
+    #[clap(long = "train-verbose", action=ArgAction::SetTrue, default_value_t = false)]
     verbose: bool,
     /// generations without improvement before triggering recovery
     #[clap(long, default_value_t = 20)]
@@ -129,20 +134,35 @@ struct TrainOpts {
     /// Max variation for map dimensions (±)
     #[clap(long, default_value_t = 0)]
     map_var: u32,
+    /// number of agents per team
+    #[clap(long, default_value_t = 2)]
+    team_size: usize,
+    /// number of teams in each match
+    #[clap(long, default_value_t = 2)]
+    num_teams: usize,
 }
 
 /// Options for the `tournament` subcommand
-#[derive(Args, Debug)]
+#[derive(Args, Debug, Clone)]
 struct TournamentOpts {
     /// directory containing champion JSON files
     #[clap(long, default_value = "out")]
     pop_path: String,
-    /// verbose per-match logs
-    #[clap(long, action=ArgAction::SetTrue)]
+    /// verbose per-match logs during tournament
+    #[clap(long = "tournament-verbose", action=ArgAction::SetTrue, default_value_t = false)]
     verbose: bool,
     /// include naive agent in tournament for Elo ranking
-    #[clap(long, action=ArgAction::SetTrue)]
+    #[clap(long = "tournament-include-naive", action=ArgAction::SetTrue, default_value_t = false)]
     include_naive: bool,
+}
+
+/// Options for the `pipeline` subcommand (train → tournament → replay)
+#[derive(Args, Debug)]
+struct PipelineOpts {
+    #[clap(flatten)]
+    train: TrainOpts,
+    #[clap(flatten)]
+    tour: TournamentOpts,
 }
 
 /// Available fitness function types
@@ -212,8 +232,9 @@ fn main() {
     let cli = Cli::parse();
     match cli.command {
         Command::Bench(opts) => run_bench(&opts),
-        Command::Train(opts) => run_train(&opts),
+        Command::Train(opts) => { let _ = run_train(&opts); },
         Command::Tournament(opts) => run_tournament(&opts),
+        Command::Pipeline(opts) => run_pipeline(&opts),
     }
 }
 
@@ -260,7 +281,7 @@ fn run_bench(opts: &BenchOpts) {
 }
 
 /// Run the NEAT training loop with snapshots and status logs
-fn run_train(opts: &TrainOpts) {
+fn run_train(opts: &TrainOpts) -> String {
     ThreadPoolBuilder::new().num_threads(opts.workers).build_global().unwrap();
     fs::create_dir_all("out").unwrap();
     // generate run-specific ID and create output directory
@@ -270,6 +291,7 @@ fn run_train(opts: &TrainOpts) {
         "{}-fn-{}-h{:.1}-d{:.1}-k{:.1}",
         ts, fn_name, opts.w_health, opts.w_damage, opts.w_kills
     ));
+    println!("Run ID: {}", id);
     let out_dir = format!("out/{}", id);
     fs::create_dir_all(&out_dir).unwrap();
     let mut sim_cfg = Config::default();
@@ -279,8 +301,8 @@ fn run_train(opts: &TrainOpts) {
     evo_cfg.pop_size = 10;
     evo_cfg.tournament_k = 2;
     evo_cfg.max_ticks = 200;
-    evo_cfg.num_teams = 2;
-    evo_cfg.team_size = 1;
+    evo_cfg.num_teams = opts.num_teams;
+    evo_cfg.team_size = opts.team_size;
     // upper bound on generations (usize::MAX if unlimited)
     let max_gens = opts.runs.unwrap_or(usize::MAX);
     let mut population = Population::new(&evo_cfg);
@@ -320,7 +342,7 @@ fn run_train(opts: &TrainOpts) {
         HTTP_TIME_NS.store(0, Ordering::Relaxed);
         REMOTE_INFER_NS.store(0, Ordering::Relaxed);
         // Timestamped generation header
-        println!("[{:.2}s] --- Generation {} ---", start.elapsed().as_secs_f32(), gen);
+        println!("[{:.2}s] --- Generation {} ({}v{}) ---", start.elapsed().as_secs_f32(), gen, evo_cfg.num_teams, evo_cfg.team_size);
         let eval_start = Instant::now();
         // Evaluate and log stats
         population.evaluate(&sim_cfg, &evo_cfg);
@@ -428,7 +450,7 @@ fn run_train(opts: &TrainOpts) {
                     "runs": opts.runs,
                     "duration_limit_s": opts.duration,
                     "snapshot_interval": opts.snapshot_interval,
-                    "fitness_fn": fn_name,
+                    "fitness_fn": format!("{:?}", opts.fitness_fn),
                     "time_bonus_weight": opts.time_bonus_weight,
                     "w_health": opts.w_health,
                     "w_damage": opts.w_damage,
@@ -543,6 +565,8 @@ fn run_train(opts: &TrainOpts) {
     println!("HTTP:      {:.2} ms total", http_time as f64 / 1e6);
     println!("Remote:    {:.2} ms total", remote_time as f64 / 1e6);
     println!("Trained {} gens in {:.1}s → {:.2} gens/sec", gen, start.elapsed().as_secs_f32(), gen as f32 / start.elapsed().as_secs_f32());
+    // return run ID
+    id
 }
 
 /// Run a round-robin tournament among all champions, compute and dump Elo ratings
@@ -663,4 +687,71 @@ fn run_tournament(opts: &TournamentOpts) {
     if remote_ns > 0 {
         println!("Remote inference total: {:.3} ms", remote_ns as f64 / 1e6);
     }
+}
+
+/// Full pipeline: train, tournament, then replay info
+fn run_pipeline(opts: &PipelineOpts) {
+    // 1) Train and get ID
+    let run_id = run_train(&opts.train);
+    // 2) Tournament on champions
+    println!("\n>>> Running tournament on out/{}...", run_id);
+    let tour_opts = TournamentOpts {
+        pop_path: format!("out/{}", run_id),
+        verbose: opts.tour.verbose,
+        include_naive: opts.tour.include_naive,
+    };
+    run_tournament(&tour_opts);
+    // 3) Summarize replay path
+    println!("\n>>> Replay saved to out/{}/champ_replay.jsonl", run_id);
+    // 4) Emit metadata and update runs index
+    let run_dir = format!("out/{}", run_id);
+    // Read best Elo from elo_ratings.json
+    let elo_path = format!("{}/elo_ratings.json", run_dir);
+    let elo_list: Vec<serde_json::Value> = serde_json::from_str(
+        &fs::read_to_string(&elo_path).expect("read elo_ratings"),
+    ).expect("parse elo_ratings");
+    let best_elo = elo_list.iter()
+        .filter_map(|v| v["elo"].as_f64())
+        .fold(f64::MIN, f64::max) as f32;
+    // Placeholder: best_generation can be derived from metadata or max snapshot; using 0
+    let meta = RunMetadata {
+        run_id: run_id.clone(),
+        timestamp: Utc::now().to_rfc3339(),
+        team_size: opts.train.team_size,
+        num_teams: opts.train.num_teams,
+        fitness_fn: format!("{:?}", opts.train.fitness_fn),
+        best_elo,
+        best_generation: 0,
+    };
+    // write per-run metadata
+    fs::write(
+        format!("{}/metadata.json", run_dir),
+        serde_json::to_string_pretty(&meta).unwrap(),
+    ).expect("write metadata.json");
+    // update top-level runs_index.json
+    let index_path = "out/runs_index.json";
+    let mut index: Vec<RunMetadata> = if Path::new(index_path).exists() {
+        serde_json::from_str(&fs::read_to_string(index_path).unwrap()).unwrap()
+    } else {
+        Vec::new()
+    };
+    if !index.iter().any(|r| r.run_id == meta.run_id) {
+        index.push(meta.clone());
+        fs::write(
+            index_path,
+            serde_json::to_string_pretty(&index).unwrap(),
+        ).expect("write runs_index.json");
+    }
+}
+
+// Metadata for each run, used in out/runs_index.json
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct RunMetadata {
+    run_id: String,
+    timestamp: String,
+    team_size: usize,
+    num_teams: usize,
+    fitness_fn: String,
+    best_elo: f32,
+    best_generation: usize,
 }

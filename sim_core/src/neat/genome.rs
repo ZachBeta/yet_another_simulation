@@ -4,6 +4,8 @@ use std::collections::HashMap;
 use super::config::EvolutionConfig;
 use super::onnx_exporter;
 use serde::{Serialize, Deserialize};
+use prost::Message;
+use crate::onnx_generated::onnx::ModelProto;
 
 /// A node in the network
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -269,7 +271,7 @@ impl Layer {
 mod tests {
     use super::*;
     use crate::config::Config as SimConfig;
-    use prost::Message;
+    use crate::onnx_generated::onnx::ModelProto;
 
     #[test]
     fn test_mutate_add_connection_and_node() {
@@ -347,7 +349,8 @@ mod tests {
         genome.initialize(&sim_cfg, &evo_cfg);
         let bytes = genome.to_onnx();
         assert!(!bytes.is_empty(), "ONNX output should not be empty");
-        let model = prost::Message::decode(bytes.as_slice()).unwrap();
-        assert_eq!(model, "neat_model");
+        let model = ModelProto::decode(bytes.as_slice()).unwrap();
+        let graph = model.graph.expect("Graph missing");
+        assert_eq!(graph.name.unwrap(), "neat_model");
     }
 }

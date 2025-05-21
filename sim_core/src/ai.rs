@@ -242,6 +242,8 @@ mod tests {
             wreck_pools:     &[],
             world_width: 1000.0,
             world_height: 1000.0,
+            attack_range: Config::default().attack_range,
+            sep_range: Config::default().sep_range,
         };
         assert!(matches!(agent.think(&view), Action::Idle));
     }
@@ -267,6 +269,8 @@ mod tests {
             wreck_pools:     &[],
             world_width: 1000.0,
             world_height: 1000.0,
+            attack_range: Config::default().attack_range,
+            sep_range: Config::default().sep_range,
         };
         match agent.think(&view) {
             Action::Fire { weapon } => if let Weapon::Laser { damage, range } = weapon {
@@ -300,6 +304,8 @@ mod tests {
             wreck_pools:     &[],
             world_width: 1000.0,
             world_height: 1000.0,
+            attack_range: Config::default().attack_range,
+            sep_range: Config::default().sep_range,
         };
         if let Action::Thrust(v) = agent.think(&view) {
             assert!(v.x > 0.0);
@@ -329,6 +335,8 @@ mod tests {
             wreck_pools:     &[],
             world_width: 1000.0,
             world_height: 1000.0,
+            attack_range: Config::default().attack_range,
+            sep_range: Config::default().sep_range,
         };
         if let Action::Thrust(v) = agent.think(&view) {
             assert!(v.x < 0.0);
@@ -358,6 +366,8 @@ mod tests {
             wreck_pools:     &[],
             world_width: 10.0,
             world_height: 10.0,
+            attack_range: Config::default().attack_range,
+            sep_range: Config::default().sep_range,
         };
         // Toroidal wrap test: use decide_action with Toroidal mode
         let mut cfg = Config::default();
@@ -391,6 +401,8 @@ mod tests {
             wreck_pools:     &[],
             world_width: 1000.0,
             world_height: 1000.0,
+            attack_range: Config::default().attack_range,
+            sep_range: Config::default().sep_range,
         };
         // Toroidal wrap direct: use decide_action with Toroidal mode
         let mut cfg = Config::default();
@@ -429,6 +441,8 @@ mod tests {
             wreck_pools: &[],
             world_width: 1000.0,
             world_height: 1000.0,
+            attack_range: Config::default().attack_range,
+            sep_range: Config::default().sep_range,
         };
         agent.state = AgentState::Engaging { target: 1 };
         let action = agent.decide_action(&view, &cfg);
@@ -466,6 +480,8 @@ mod tests {
             wreck_pools: &[],
             world_width: 1000.0,
             world_height: 1000.0,
+            attack_range: Config::default().attack_range,
+            sep_range: Config::default().sep_range,
         };
         agent.state = AgentState::Engaging { target: 1 };
         let action = agent.decide_action(&view, &cfg);
@@ -503,6 +519,8 @@ mod tests {
             wreck_pools: &[],
             world_width: 1000.0,
             world_height: 1000.0,
+            attack_range: Config::default().attack_range,
+            sep_range: Config::default().sep_range,
         };
         agent.state = AgentState::Engaging { target: 1 };
         let action = agent.decide_action(&view, &cfg);

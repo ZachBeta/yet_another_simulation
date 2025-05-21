@@ -34,15 +34,21 @@
     <span id="modeDisplay">Mode: Euclidean (walls)</span>
     <div id="brainLegend" style="margin-top:4px;"></div>
     <label style="margin-left:8px;">
-      Champion:
-      <select id="champSelect" style="width:200px;"></select>
-      <span id="champElo" style="margin-left:8px;">Elo: N/A</span>
+      Select Run:
+      <select id="runSelect" style="width:200px;"></select>
     </label>
+    <div id="runMeta" style="margin-left:8px; border:1px solid #ccc; padding:8px; max-width:300px;">
+      Select a run to view metadata
+    </div>
     <label style="margin-left:8px;">
-      Replay Path:
-      <input id="replayPath" type="text" placeholder="out/champion_latest_vs_naive.jsonl" style="width:200px;" />
+      Model Snapshot:
+      <select id="champSelect" style="width:200px;"></select>
+      <span id="champElo" style="margin-left:8px;">Fitness: N/A</span>
     </label>
-    <button id="loadReplayBtn">Load Replay</button>
+    <div id="metadata-panel" style="margin-left:8px; border:1px solid #ccc; padding:8px; max-width:300px;">
+      <h3>Run Metadata</h3>
+      <div id="metadata-content">Select a champion to view metadata</div>
+    </div>
   </div>
   <canvas id="battleCanvas" width="800" height="600"></canvas>
   <script type="module" src="script.js"></script>

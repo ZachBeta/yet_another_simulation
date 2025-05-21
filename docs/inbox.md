@@ -1,3 +1,10 @@
+# Inbox
+
+## 2025-05-19
+* we should iterate toward training to fill the full complement of neural input parameters
+* update the readme to explain how to run the whole training+tournament+battle pipeline
+
+---
 # WIP
 * looks like toroidal got hallucinated back into default, let's fix that
 
