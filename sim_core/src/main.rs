@@ -148,6 +148,9 @@ struct TournamentOpts {
     /// directory containing champion JSON files
     #[clap(long, default_value = "out")]
     pop_path: String,
+    /// explicit champion JSON file paths (repeatable)
+    #[clap(long = "pop-file", value_name = "FILE", action=ArgAction::Append)]
+    pop_files: Vec<String>,
     /// verbose per-match logs during tournament
     #[clap(long = "tournament-verbose", action=ArgAction::SetTrue, default_value_t = false)]
     verbose: bool,
@@ -342,7 +345,7 @@ fn run_train(opts: &TrainOpts) -> String {
         HTTP_TIME_NS.store(0, Ordering::Relaxed);
         REMOTE_INFER_NS.store(0, Ordering::Relaxed);
         // Timestamped generation header
-        println!("[{:.2}s] --- Generation {} ({}v{}) ---", start.elapsed().as_secs_f32(), gen, evo_cfg.num_teams, evo_cfg.team_size);
+        println!("[{}][{:.2}s] --- Generation {} ({}v{}) ---", id, start.elapsed().as_secs_f32(), gen, evo_cfg.num_teams, evo_cfg.team_size);
         let eval_start = Instant::now();
         // Evaluate and log stats
         population.evaluate(&sim_cfg, &evo_cfg);
@@ -592,34 +595,59 @@ fn run_tournament(opts: &TournamentOpts) {
     evo_cfg.num_teams = 2;
     evo_cfg.team_size = 1;
     evo_cfg.max_ticks = 200;
-    // Load champion genomes from JSON files
-    let champions: Vec<(String, Genome)> = fs::read_dir(&opts.pop_path).unwrap()
-        .filter_map(|entry| {
-            let path = entry.ok()?.path();
-            if path.extension().and_then(|e| e.to_str()) != Some("json") {
-                return None;
+    // Gather participants: try explicit files first, then dir; skip invalid
+    let mut participants: Vec<(String, Option<Genome>)> = Vec::new();
+    if !opts.pop_files.is_empty() {
+        for file in &opts.pop_files {
+            let p = Path::new(file);
+            match fs::read_to_string(p) {
+                Ok(data) => match serde_json::from_str::<Genome>(&data) {
+                    Ok(g) => participants.push((file.clone(), Some(g))),
+                    Err(e) => eprintln!("Skipping {}: invalid genome JSON: {}", file, e),
+                },
+                Err(e) => eprintln!("Skipping {}: failed to read file: {}", file, e),
             }
-            let fname = path.file_name()?.to_string_lossy().to_string();
-            let data = fs::read_to_string(&path).ok()?;
-            let g: Genome = serde_json::from_str(&data).ok()?;
-            Some((fname, g))
-        })
-        .collect();
-    if champions.is_empty() {
-        println!("Need at least one champion in {}", opts.pop_path);
+        }
+    } else {
+        let champs: Vec<(String, Genome)> = fs::read_dir(&opts.pop_path).unwrap()
+            .filter_map(|entry| {
+                let path = entry.ok()?.path();
+                if path.extension().and_then(|e| e.to_str()) != Some("json") {
+                    return None;
+                }
+                let fname = path.file_name()?.to_string_lossy().to_string();
+                let data = fs::read_to_string(&path).ok()?;
+                let g: Genome = serde_json::from_str(&data).ok()?;
+                Some((fname, g))
+            })
+            .collect();
+        if champs.is_empty() {
+            println!("Need at least one valid champion (json) in {}", opts.pop_path);
+            return;
+        }
+        for (fname, g) in champs {
+            participants.push((fname, Some(g)));
+        }
+    }
+    // If still no valid participants, abort
+    if participants.is_empty() {
+        println!("No valid champions found; skipping tournament");
         return;
     }
-    // Build participants list (champions and optional naive)
-    let mut participants: Vec<(String, Option<Genome>)> =
-        champions.into_iter().map(|(fname, g)| (fname, Some(g))).collect();
+    // Include naive agent if requested
     if opts.include_naive {
         participants.push(("Naive".to_string(), None));
     }
     let total = participants.len();
-    // Initialize Elo ratings at 1200
-    let mut ratings: HashMap<String, f32> = participants.iter()
-        .map(|(name, _)| (format!("{}/{}", opts.pop_path, name), 1200.0))
-        .collect();
+    // Initialize Elo ratings at 1200, use full names for pop-files
+    let mut ratings: HashMap<String, f32> = participants.iter().map(|(name, _)| {
+        let key = if !opts.pop_files.is_empty() {
+            name.clone()
+        } else {
+            format!("{}/{}", opts.pop_path, name)
+        };
+        (key, 1200.0)
+    }).collect();
     let k_factor = 32.0;
     // Generate all unique pairs (i < j)
     let pairs: Vec<(usize, usize)> = (0..total)
@@ -649,8 +677,16 @@ fn run_tournament(opts: &TournamentOpts) {
     println!(); // newline after progress bar
     // Sequentially update Elo ratings
     for (i, j, win_i) in outcomes {
-        let pi = format!("{}/{}", opts.pop_path, participants[i].0);
-        let pj = format!("{}/{}", opts.pop_path, participants[j].0);
+        let pi = if !opts.pop_files.is_empty() {
+            participants[i].0.clone()
+        } else {
+            format!("{}/{}", opts.pop_path, participants[i].0)
+        };
+        let pj = if !opts.pop_files.is_empty() {
+            participants[j].0.clone()
+        } else {
+            format!("{}/{}", opts.pop_path, participants[j].0)
+        };
         let ri = *ratings.get(&pi).unwrap();
         let rj = *ratings.get(&pj).unwrap();
         let expected_i = 1.0 / (1.0 + 10f32.powf((rj - ri) / 400.0));
@@ -697,6 +733,7 @@ fn run_pipeline(opts: &PipelineOpts) {
     println!("\n>>> Running tournament on out/{}...", run_id);
     let tour_opts = TournamentOpts {
         pop_path: format!("out/{}", run_id),
+        pop_files: Vec::new(),
         verbose: opts.tour.verbose,
         include_naive: opts.tour.include_naive,
     };

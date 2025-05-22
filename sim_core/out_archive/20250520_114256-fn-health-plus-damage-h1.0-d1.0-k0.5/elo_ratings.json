@@ -1,0 +1,54 @@
+[
+  {
+    "elo": 1101.565673828125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out_archive/20250520_114256-fn-health-plus-damage-h1.0-d1.0-k0.5/champion_gen_040.json"
+  },
+  {
+    "elo": 1044.21728515625,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out_archive/20250520_114256-fn-health-plus-damage-h1.0-d1.0-k0.5/champion_gen_000.json"
+  },
+  {
+    "elo": 1079.943115234375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out_archive/20250520_114256-fn-health-plus-damage-h1.0-d1.0-k0.5/champion_gen_020.json"
+  },
+  {
+    "elo": 1249.7913818359375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out_archive/20250520_114256-fn-health-plus-damage-h1.0-d1.0-k0.5/champion_gen_005.json"
+  },
+  {
+    "elo": 1350.00927734375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out_archive/20250520_114256-fn-health-plus-damage-h1.0-d1.0-k0.5/Naive"
+  },
+  {
+    "elo": 1319.268798828125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out_archive/20250520_114256-fn-health-plus-damage-h1.0-d1.0-k0.5/champion_gen_035.json"
+  },
+  {
+    "elo": 1152.6790771484375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out_archive/20250520_114256-fn-health-plus-damage-h1.0-d1.0-k0.5/champion_gen_030.json"
+  },
+  {
+    "elo": 1273.155029296875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out_archive/20250520_114256-fn-health-plus-damage-h1.0-d1.0-k0.5/champion_gen_055.json"
+  },
+  {
+    "elo": 1296.282958984375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out_archive/20250520_114256-fn-health-plus-damage-h1.0-d1.0-k0.5/champion_gen_015.json"
+  },
+  {
+    "elo": 1226.1114501953125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out_archive/20250520_114256-fn-health-plus-damage-h1.0-d1.0-k0.5/champion_gen_025.json"
+  },
+  {
+    "elo": 1202.0552978515625,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out_archive/20250520_114256-fn-health-plus-damage-h1.0-d1.0-k0.5/champion_gen_045.json"
+  },
+  {
+    "elo": 1177.5838623046875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out_archive/20250520_114256-fn-health-plus-damage-h1.0-d1.0-k0.5/champion_gen_050.json"
+  },
+  {
+    "elo": 1127.3369140625,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out_archive/20250520_114256-fn-health-plus-damage-h1.0-d1.0-k0.5/champion_gen_010.json"
+  }
+]

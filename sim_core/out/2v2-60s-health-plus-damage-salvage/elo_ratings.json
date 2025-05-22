@@ -1,0 +1,170 @@
+[
+  {
+    "elo": 1253.0672607421875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_100.json"
+  },
+  {
+    "elo": 1236.997314453125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_045.json"
+  },
+  {
+    "elo": 1334.414794921875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_075.json"
+  },
+  {
+    "elo": 1355.303466796875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_055.json"
+  },
+  {
+    "elo": 1106.0653076171875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_030.json"
+  },
+  {
+    "elo": 937.5280151367188,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_020.json"
+  },
+  {
+    "elo": 1561.80517578125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/Naive"
+  },
+  {
+    "elo": 1297.7742919921875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_025.json"
+  },
+  {
+    "elo": 1220.3724365234375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_090.json"
+  },
+  {
+    "elo": 1409.02099609375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_190.json"
+  },
+  {
+    "elo": 1345.049072265625,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_080.json"
+  },
+  {
+    "elo": 1460.870849609375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_195.json"
+  },
+  {
+    "elo": 1066.603515625,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_125.json"
+  },
+  {
+    "elo": 1129.466796875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_070.json"
+  },
+  {
+    "elo": 1167.3182373046875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_085.json"
+  },
+  {
+    "elo": 1310.7265625,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_005.json"
+  },
+  {
+    "elo": 1082.0799560546875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_010.json"
+  },
+  {
+    "elo": 1021.7216796875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_040.json"
+  },
+  {
+    "elo": 1496.814453125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_170.json"
+  },
+  {
+    "elo": 1323.306396484375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_130.json"
+  },
+  {
+    "elo": 1044.3275146484375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_060.json"
+  },
+  {
+    "elo": 1185.516357421875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_115.json"
+  },
+  {
+    "elo": 998.794677734375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_105.json"
+  },
+  {
+    "elo": 1375.172119140625,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_015.json"
+  },
+  {
+    "elo": 1436.57763671875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_175.json"
+  },
+  {
+    "elo": 910.9087524414062,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_160.json"
+  },
+  {
+    "elo": 1283.517333984375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_065.json"
+  },
+  {
+    "elo": 1483.436279296875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_185.json"
+  },
+  {
+    "elo": 1203.2066650390625,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_050.json"
+  },
+  {
+    "elo": 1390.40380859375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_035.json"
+  },
+  {
+    "elo": 1148.6297607421875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_135.json"
+  },
+  {
+    "elo": 840.6571655273438,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_145.json"
+  },
+  {
+    "elo": 853.2427368164062,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_155.json"
+  },
+  {
+    "elo": 1365.297607421875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_110.json"
+  },
+  {
+    "elo": 1449.9847412109375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_199.json"
+  },
+  {
+    "elo": 1268.5743408203125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_120.json"
+  },
+  {
+    "elo": 1410.854248046875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_180.json"
+  },
+  {
+    "elo": 965.0855102539062,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_150.json"
+  },
+  {
+    "elo": 975.5524291992188,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_095.json"
+  },
+  {
+    "elo": 928.2211303710938,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_140.json"
+  },
+  {
+    "elo": 817.406494140625,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_165.json"
+  },
+  {
+    "elo": 948.3257446289062,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-health-plus-damage-salvage/champion_gen_000.json"
+  }
+]

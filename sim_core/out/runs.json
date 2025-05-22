@@ -1,6 +1,150 @@
 [
   {
+    "run_id": "1v1-30s-health-plus-damage",
+    "best_elo": 1561.253662109375
+  },
+  {
+    "run_id": "1v1-30s-health-plus-damage-time",
+    "best_elo": 1572.1466064453125
+  },
+  {
+    "run_id": "1v1-60s-health-plus-damage",
+    "best_elo": 1561.872802734375
+  },
+  {
+    "run_id": "1v1-60s-health-plus-damage-salvage",
+    "best_elo": 1561.253662109375
+  },
+  {
+    "run_id": "1v1-60s-health-plus-damage-time",
+    "best_elo": 1561.2742919921875
+  },
+  {
+    "run_id": "1v1-60s-health-plus-damage-time-salvage",
+    "best_elo": 1570.1107177734375
+  },
+  {
+    "run_id": "2v2-120s-hd",
+    "best_elo": 1563.260986328125
+  },
+  {
     "run_id": "2v2-30s",
-    "best_elo": 1231.26
+    "best_elo": 1245.7237548828125
+  },
+  {
+    "run_id": "2v2-30s-balanced",
+    "best_elo": 1453.4501953125
+  },
+  {
+    "run_id": "2v2-30s-hd",
+    "best_elo": 1474.0487060546875
+  },
+  {
+    "run_id": "2v2-30s-health-plus-damage",
+    "best_elo": 1491.56298828125
+  },
+  {
+    "run_id": "2v2-30s-health-plus-damage-time",
+    "best_elo": 1461.6715087890625
+  },
+  {
+    "run_id": "2v2-60s-balanced-salvage",
+    "best_elo": 1513.8094482421875
+  },
+  {
+    "run_id": "2v2-60s-hd-salvage",
+    "best_elo": 1570.9459228515625
+  },
+  {
+    "run_id": "2v2-60s-health-plus-damage",
+    "best_elo": 1570.4217529296875
+  },
+  {
+    "run_id": "2v2-60s-health-plus-damage-salvage",
+    "best_elo": 1561.80517578125
+  },
+  {
+    "run_id": "2v2-60s-health-plus-damage-time",
+    "best_elo": 1558.0533447265625
+  },
+  {
+    "run_id": "2v2-60s-health-plus-damage-time-salvage",
+    "best_elo": 1541.102294921875
+  },
+  {
+    "run_id": "3v3-30s-health-plus-damage",
+    "best_elo": 1362.9373779296875
+  },
+  {
+    "run_id": "3v3-30s-health-plus-damage-time",
+    "best_elo": 1330.0423583984375
+  },
+  {
+    "run_id": "3v3-60s-health-plus-damage",
+    "best_elo": 1402.85888671875
+  },
+  {
+    "run_id": "3v3-60s-health-plus-damage-salvage",
+    "best_elo": 1398.289794921875
+  },
+  {
+    "run_id": "3v3-60s-health-plus-damage-time",
+    "best_elo": 1500.012451171875
+  },
+  {
+    "run_id": "3v3-60s-health-plus-damage-time-salvage",
+    "best_elo": 1340.1934814453125
+  },
+  {
+    "run_id": "20250519_124510-fn-health-plus-damage-h1.2-d0.8-k0.6",
+    "best_elo": 1245.7237548828125
+  },
+  {
+    "run_id": "20250519_125453-fn-health-plus-damage-h1.0-d1.0-k0.5",
+    "best_elo": 1259.5089111328125
+  },
+  {
+    "run_id": "20250519_125734-fn-health-plus-damage-h1.0-d1.0-k0.5",
+    "best_elo": 1272.7535400390625
+  },
+  {
+    "run_id": "20250519_125804-fn-health-plus-damage-time-h1.0-d1.0-k0.5",
+    "best_elo": 1404.3880615234375
+  },
+  {
+    "run_id": "20250519_130912-fn-health-plus-damage-h1.0-d1.0-k0.5",
+    "best_elo": 1351.4002685546875
+  },
+  {
+    "run_id": "20250519_140458-fn-health-plus-damage-h1.0-d1.0-k0.5",
+    "best_elo": 1331.041015625
+  },
+  {
+    "run_id": "20250519_140623-fn-health-plus-damage-h1.0-d1.0-k0.5",
+    "best_elo": 1561.253662109375
+  },
+  {
+    "run_id": "20250519_140837-fn-health-plus-damage-h1.0-d1.0-k0.5",
+    "best_elo": 1309.5042724609375
+  },
+  {
+    "run_id": "20250519_141821-fn-health-plus-damage-h1.0-d1.0-k0.5",
+    "best_elo": 1568.5631103515625
+  },
+  {
+    "run_id": "20250520_114256-fn-health-plus-damage-h1.0-d1.0-k0.5",
+    "best_elo": 1350.00927734375
+  },
+  {
+    "run_id": "2v2-30s",
+    "best_elo": 1231.263671875
+  },
+  {
+    "run_id": "2v2-60s",
+    "best_elo": 1297.4967041015625
+  },
+  {
+    "run_id": "2v2-60s-again",
+    "best_elo": 1245.7237548828125
   }
 ]

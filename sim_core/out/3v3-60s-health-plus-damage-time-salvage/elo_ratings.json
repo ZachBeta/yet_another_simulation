@@ -1,0 +1,50 @@
+[
+  {
+    "elo": 1285.881591796875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/3v3-60s-health-plus-damage-time-salvage/champion_gen_015.json"
+  },
+  {
+    "elo": 1213.89111328125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/3v3-60s-health-plus-damage-time-salvage/champion_gen_045.json"
+  },
+  {
+    "elo": 1309.445068359375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/3v3-60s-health-plus-damage-time-salvage/champion_gen_035.json"
+  },
+  {
+    "elo": 1164.10986328125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/3v3-60s-health-plus-damage-time-salvage/champion_gen_030.json"
+  },
+  {
+    "elo": 1112.622314453125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/3v3-60s-health-plus-damage-time-salvage/champion_gen_040.json"
+  },
+  {
+    "elo": 1059.4698486328125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/3v3-60s-health-plus-damage-time-salvage/champion_gen_020.json"
+  },
+  {
+    "elo": 1138.580810546875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/3v3-60s-health-plus-damage-time-salvage/champion_gen_010.json"
+  },
+  {
+    "elo": 1189.2088623046875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/3v3-60s-health-plus-damage-time-salvage/champion_gen_050.json"
+  },
+  {
+    "elo": 1340.1934814453125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/3v3-60s-health-plus-damage-time-salvage/Naive"
+  },
+  {
+    "elo": 1086.2462158203125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/3v3-60s-health-plus-damage-time-salvage/champion_gen_000.json"
+  },
+  {
+    "elo": 1262.160888671875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/3v3-60s-health-plus-damage-time-salvage/champion_gen_005.json"
+  },
+  {
+    "elo": 1238.18994140625,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/3v3-60s-health-plus-damage-time-salvage/champion_gen_025.json"
+  }
+]

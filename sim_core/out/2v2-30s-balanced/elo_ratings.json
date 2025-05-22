@@ -1,0 +1,102 @@
+[
+  {
+    "elo": 1259.060546875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-balanced/champion_gen_055.json"
+  },
+  {
+    "elo": 1244.9404296875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-balanced/champion_gen_080.json"
+  },
+  {
+    "elo": 1401.772705078125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-balanced/champion_gen_005.json"
+  },
+  {
+    "elo": 1016.1168212890625,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-balanced/champion_gen_040.json"
+  },
+  {
+    "elo": 1328.442626953125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-balanced/champion_gen_010.json"
+  },
+  {
+    "elo": 1039.464111328125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-balanced/champion_gen_060.json"
+  },
+  {
+    "elo": 1151.400146484375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-balanced/champion_gen_090.json"
+  },
+  {
+    "elo": 1367.7354736328125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-balanced/champion_gen_025.json"
+  },
+  {
+    "elo": 1187.875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-balanced/champion_gen_100.json"
+  },
+  {
+    "elo": 1272.7059326171875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-balanced/champion_gen_110.json"
+  },
+  {
+    "elo": 1230.19580078125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-balanced/champion_gen_075.json"
+  },
+  {
+    "elo": 1132.0684814453125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-balanced/champion_gen_050.json"
+  },
+  {
+    "elo": 1091.28759765625,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-balanced/champion_gen_085.json"
+  },
+  {
+    "elo": 992.326416015625,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-balanced/champion_gen_105.json"
+  },
+  {
+    "elo": 968.1141967773438,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-balanced/champion_gen_095.json"
+  },
+  {
+    "elo": 1069.8935546875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-balanced/champion_gen_070.json"
+  },
+  {
+    "elo": 1322.00537109375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-balanced/champion_gen_020.json"
+  },
+  {
+    "elo": 1396.875732421875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-balanced/champion_gen_035.json"
+  },
+  {
+    "elo": 943.5001831054688,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-balanced/champion_gen_000.json"
+  },
+  {
+    "elo": 1286.0689697265625,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-balanced/champion_gen_015.json"
+  },
+  {
+    "elo": 1453.4501953125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-balanced/Naive"
+  },
+  {
+    "elo": 1205.0396728515625,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-balanced/champion_gen_065.json"
+  },
+  {
+    "elo": 1112.0228271484375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-balanced/champion_gen_115.json"
+  },
+  {
+    "elo": 1357.6351318359375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-balanced/champion_gen_030.json"
+  },
+  {
+    "elo": 1170.002197265625,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-balanced/champion_gen_045.json"
+  }
+]

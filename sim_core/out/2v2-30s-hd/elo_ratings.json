@@ -1,0 +1,114 @@
+[
+  {
+    "elo": 1139.513671875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-hd/champion_gen_035.json"
+  },
+  {
+    "elo": 952.6630249023438,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-hd/champion_gen_005.json"
+  },
+  {
+    "elo": 1474.0487060546875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-hd/Naive"
+  },
+  {
+    "elo": 1317.6693115234375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-hd/champion_gen_090.json"
+  },
+  {
+    "elo": 1048.800048828125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-hd/champion_gen_015.json"
+  },
+  {
+    "elo": 1400.51611328125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-hd/champion_gen_080.json"
+  },
+  {
+    "elo": 1418.161376953125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-hd/champion_gen_055.json"
+  },
+  {
+    "elo": 1278.3114013671875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-hd/champion_gen_085.json"
+  },
+  {
+    "elo": 1255.7088623046875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-hd/champion_gen_070.json"
+  },
+  {
+    "elo": 1239.7359619140625,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-hd/champion_gen_125.json"
+  },
+  {
+    "elo": 1372.3214111328125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-hd/champion_gen_065.json"
+  },
+  {
+    "elo": 1352.9454345703125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-hd/champion_gen_120.json"
+  },
+  {
+    "elo": 1069.9268798828125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-hd/champion_gen_020.json"
+  },
+  {
+    "elo": 1300.604248046875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-hd/champion_gen_115.json"
+  },
+  {
+    "elo": 1333.4002685546875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-hd/champion_gen_100.json"
+  },
+  {
+    "elo": 1081.22509765625,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-hd/champion_gen_030.json"
+  },
+  {
+    "elo": 1010.3938598632812,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-hd/champion_gen_045.json"
+  },
+  {
+    "elo": 1037.569580078125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-hd/champion_gen_050.json"
+  },
+  {
+    "elo": 1138.6763916015625,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-hd/champion_latest.json"
+  },
+  {
+    "elo": 1382.89013671875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-hd/champion_gen_075.json"
+  },
+  {
+    "elo": 1214.199462890625,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-hd/champion_gen_060.json"
+  },
+  {
+    "elo": 1435.908935546875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-hd/champion_gen_110.json"
+  },
+  {
+    "elo": 1118.453369140625,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-hd/champion_gen_025.json"
+  },
+  {
+    "elo": 984.8992919921875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-hd/champion_gen_010.json"
+  },
+  {
+    "elo": 960.5188598632812,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-hd/champion_gen_040.json"
+  },
+  {
+    "elo": 1193.5657958984375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-hd/champion_gen_105.json"
+  },
+  {
+    "elo": 1166.2513427734375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-hd/champion_gen_095.json"
+  },
+  {
+    "elo": 921.120849609375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-30s-hd/champion_gen_000.json"
+  }
+]

@@ -1,0 +1,18 @@
+[
+  {
+    "elo": 1213.8277587890625,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out_archive/2v2-60s-again/champion_gen_005.json"
+  },
+  {
+    "elo": 1184.834716796875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out_archive/2v2-60s-again/champion_gen_010.json"
+  },
+  {
+    "elo": 1155.61376953125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out_archive/2v2-60s-again/champion_gen_000.json"
+  },
+  {
+    "elo": 1245.7237548828125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out_archive/2v2-60s-again/Naive"
+  }
+]

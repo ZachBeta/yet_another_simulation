@@ -1,0 +1,174 @@
+[
+  {
+    "elo": 1014.2033081054688,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_155.json"
+  },
+  {
+    "elo": 1184.8486328125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_100.json"
+  },
+  {
+    "elo": 830.5897216796875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_165.json"
+  },
+  {
+    "elo": 1441.343017578125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_180.json"
+  },
+  {
+    "elo": 1330.0860595703125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_150.json"
+  },
+  {
+    "elo": 1314.2933349609375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_110.json"
+  },
+  {
+    "elo": 1214.43212890625,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_065.json"
+  },
+  {
+    "elo": 1294.65869140625,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_075.json"
+  },
+  {
+    "elo": 1463.949462890625,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_199.json"
+  },
+  {
+    "elo": 1152.8323974609375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_090.json"
+  },
+  {
+    "elo": 1118.55078125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_115.json"
+  },
+  {
+    "elo": 1257.8023681640625,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_005.json"
+  },
+  {
+    "elo": 1245.492919921875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_025.json"
+  },
+  {
+    "elo": 993.4244384765625,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_125.json"
+  },
+  {
+    "elo": 1341.8406982421875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_170.json"
+  },
+  {
+    "elo": 1269.4237060546875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_140.json"
+  },
+  {
+    "elo": 1135.964111328125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_050.json"
+  },
+  {
+    "elo": 906.7136840820312,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_095.json"
+  },
+  {
+    "elo": 1426.05859375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_latest.json"
+  },
+  {
+    "elo": 1499.9666748046875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_185.json"
+  },
+  {
+    "elo": 1232.495361328125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_160.json"
+  },
+  {
+    "elo": 972.2770385742188,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_060.json"
+  },
+  {
+    "elo": 806.9359741210938,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_020.json"
+  },
+  {
+    "elo": 1322.3397216796875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_015.json"
+  },
+  {
+    "elo": 1063.241943359375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_070.json"
+  },
+  {
+    "elo": 1349.2572021484375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_035.json"
+  },
+  {
+    "elo": 1364.0537109375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_055.json"
+  },
+  {
+    "elo": 1343.6517333984375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_010.json"
+  },
+  {
+    "elo": 1169.13427734375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_045.json"
+  },
+  {
+    "elo": 1082.170654296875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_135.json"
+  },
+  {
+    "elo": 1480.5087890625,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_195.json"
+  },
+  {
+    "elo": 1406.1339111328125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_175.json"
+  },
+  {
+    "elo": 1570.9459228515625,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/Naive"
+  },
+  {
+    "elo": 950.7702026367188,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_040.json"
+  },
+  {
+    "elo": 1304.07470703125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_080.json"
+  },
+  {
+    "elo": 1199.9542236328125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_120.json"
+  },
+  {
+    "elo": 928.9127807617188,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_105.json"
+  },
+  {
+    "elo": 1284.609619140625,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_130.json"
+  },
+  {
+    "elo": 1459.5850830078125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_190.json"
+  },
+  {
+    "elo": 1040.858642578125,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_030.json"
+  },
+  {
+    "elo": 853.9597778320312,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_145.json"
+  },
+  {
+    "elo": 1100.6131591796875,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_085.json"
+  },
+  {
+    "elo": 877.0404052734375,
+    "path": "/Users/zmorek/workspace/ZachBeta/yet_another_simulation/sim_core/out/2v2-60s-hd-salvage/champion_gen_000.json"
+  }
+]
