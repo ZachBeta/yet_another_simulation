@@ -74,21 +74,21 @@ async function loadChampion() {
     }
     await initSim(json);
     // Display champion metadata from JSON
-    try {
-      const parsedJson = JSON.parse(json);
-      const meta = parsedJson.metadata || {};
-      document.getElementById('metadata-content').innerHTML = `
-        <dl>
-          <dt>Run ID</dt><dd>${meta.config?.run_id || 'N/A'}</dd>
-          <dt>Timestamp</dt><dd>${meta.timestamp || 'N/A'}</dd>
-          <dt>Team Size</dt><dd>${meta.evolution_config?.team_size || 'N/A'}</dd>
-          <dt>Num Teams</dt><dd>${meta.evolution_config?.num_teams || 'N/A'}</dd>
-          <dt>Fitness Fn</dt><dd>${meta.config?.fitness_fn || 'N/A'}</dd>
-          <dt>Generation</dt><dd>${meta.generation || 'N/A'}</dd>
-        </dl>`;
-    } catch(e) {
-      console.warn('Failed to parse champion metadata:', e);
-    }
+    // try {
+    //   const parsedJson = JSON.parse(json);
+    //   const meta = parsedJson.metadata || {};
+    //   document.getElementById('metadata-content').innerHTML = `
+    //     <dl>
+    //       <dt>Run ID</dt><dd>${meta.config?.run_id || 'N/A'}</dd>
+    //       <dt>Timestamp</dt><dd>${meta.timestamp || 'N/A'}</dd>
+    //       <dt>Team Size</dt><dd>${meta.evolution_config?.team_size || 'N/A'}</dd>
+    //       <dt>Num Teams</dt><dd>${meta.evolution_config?.num_teams || 'N/A'}</dd>
+    //       <dt>Fitness Fn</dt><dd>${meta.config?.fitness_fn || 'N/A'}</dd>
+    //       <dt>Generation</dt><dd>${meta.generation || 'N/A'}</dd>
+    //     </dl>`;
+    // } catch(e) {
+    //   console.warn('Failed to parse champion metadata:', e);
+    // }
   } catch(e) {
     alert('Failed to load champion JSON: ' + e);
   }

@@ -23,6 +23,10 @@ pub struct MatchStats {
     pub total_damage_inflicted: f32,
     /// Number of opponent units killed
     pub kills: usize,
+    /// Sum of salvage (loot) actions over match
+    pub salvage_actions: f32,
+    /// Sum of exploration (thrust) actions over match
+    pub exploration_actions: f32,
 }
 
 /// Run a single match, return raw statistics
@@ -45,13 +49,18 @@ pub fn run_match(
     let n_agents = sim.agents_data.len() / AGENT_STRIDE;
     // Initial total opponent health
     let initial_opponent_health = sim_cfg.health_max * ((evo_cfg.num_teams * evo_cfg.team_size - evo_cfg.team_size) as f32);
-    let mut stats = MatchStats { ticks: 0, subject_team_health: 0.0, total_damage_inflicted: 0.0, kills: 0 };
+    // Track salvage & exploration actions
+    let mut total_salvage_actions: f32 = 0.0;
+    let mut total_thrust_actions: f32 = 0.0;
+    let mut stats = MatchStats { ticks: 0, subject_team_health: 0.0, total_damage_inflicted: 0.0, kills: 0, salvage_actions: 0.0, exploration_actions: 0.0 };
     for tick in 0..evo_cfg.max_ticks {
         // Profile simulation step (skip timing on wasm32)
         #[cfg(not(target_arch = "wasm32"))]
         {
             let phys_start = Instant::now();
             sim.step();
+            total_salvage_actions += sim.loot_count as f32;
+            total_thrust_actions += sim.thrust_count as f32;
             let phys_ns = phys_start.elapsed().as_nanos() as u64;
             PHYS_TIME_NS.fetch_add(phys_ns, Ordering::Relaxed);
             PHYS_COUNT.fetch_add(1, Ordering::Relaxed);
@@ -59,6 +68,8 @@ pub fn run_match(
         #[cfg(target_arch = "wasm32")]
         {
             sim.step();
+            total_salvage_actions += sim.loot_count as f32;
+            total_thrust_actions += sim.thrust_count as f32;
         }
         stats.ticks = tick + 1;
         if evo_cfg.early_exit {
@@ -108,6 +119,8 @@ pub fn run_match(
     }
     let initial_opponents = n_agents.saturating_sub(evo_cfg.team_size as usize);
     stats.kills = initial_opponents.saturating_sub(opp_alive);
+    stats.salvage_actions = total_salvage_actions;
+    stats.exploration_actions = total_thrust_actions;
     #[cfg(not(target_arch = "wasm32"))]
     {
         let match_ns = match_start.elapsed().as_nanos() as u64;
@@ -141,9 +154,14 @@ pub fn run_match_record<P: AsRef<Path>>(
     );
     let n_agents = sim.agents_data.len() / AGENT_STRIDE;
     let initial_opp_health = sim_cfg.health_max * ((evo_cfg.num_teams * evo_cfg.team_size - evo_cfg.team_size) as f32);
-    let mut stats = MatchStats { ticks: 0, subject_team_health: 0.0, total_damage_inflicted: 0.0, kills: 0 };
+    // Track salvage & exploration actions
+    let mut total_salvage_actions: f32 = 0.0;
+    let mut total_thrust_actions: f32 = 0.0;
+    let mut stats = MatchStats { ticks: 0, subject_team_health: 0.0, total_damage_inflicted: 0.0, kills: 0, salvage_actions: 0.0, exploration_actions: 0.0 };
     for tick in 0..evo_cfg.max_ticks {
         sim.step();
+        total_salvage_actions += sim.loot_count as f32;
+        total_thrust_actions += sim.thrust_count as f32;
         stats.ticks = tick + 1;
         // dump frame
         let frame = Frame { tick: stats.ticks, agents: sim.agents_data.clone(), wrecks: sim.wrecks_data.clone() };
@@ -182,5 +200,7 @@ pub fn run_match_record<P: AsRef<Path>>(
     }
     let initial_opponents = n_agents.saturating_sub(evo_cfg.team_size as usize);
     stats.kills = initial_opponents.saturating_sub(opp_alive);
+    stats.salvage_actions = total_salvage_actions;
+    stats.exploration_actions = total_thrust_actions;
     stats
 }

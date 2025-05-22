@@ -10,7 +10,7 @@ const fs = require('fs');
 const path = require('path');
 
 const crateDir = path.resolve(__dirname, '..', 'sim_core');
-const rootDir = path.resolve(__dirname, '..');
+const rootDir = path.resolve(__dirname, '..', '..');
 const bin = path.join(crateDir, 'target', 'release', 'neat_train');
 
 // 1) Discover champion files

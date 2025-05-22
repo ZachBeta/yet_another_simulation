@@ -28,19 +28,30 @@ async function findRuns() {
       if (!dirent.isDirectory()) continue;
       const runId = dirent.name;
       const runDir = path.join(base, runId);
+      let bestElo = null;
+      // try per-run Elo file
       const eloFile = path.join(runDir, 'elo_ratings.json');
       try {
         const data = await fs.readFile(eloFile, 'utf8');
         const list = JSON.parse(data);
         if (Array.isArray(list) && list.length) {
-          // find max elo
           const best = list.reduce((max, e) => e.elo > max.elo ? e : max, list[0]);
-          runs.push({ run_id: runId, best_elo: best.elo });
+          bestElo = best.elo;
         }
-      } catch (e) {
-        // skip runs without elo_ratings.json
-        continue;
+      } catch (_) {
+        // fallback to champion fitness
+        const champFile = path.join(runDir, 'champion_latest.json');
+        try {
+          const champData = await fs.readFile(champFile, 'utf8');
+          const champJson = JSON.parse(champData);
+          if (champJson.genome && typeof champJson.genome.fitness === 'number') {
+            bestElo = champJson.genome.fitness;
+          }
+        } catch (_) {
+          // no data available
+        }
       }
+      if (bestElo !== null) runs.push({ run_id: runId, best_elo: bestElo });
     }
   }
   return runs;

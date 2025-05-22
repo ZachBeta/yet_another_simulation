@@ -125,6 +125,12 @@ struct TrainOpts {
     /// Weight for kills in fitness
     #[clap(long, default_value_t = 0.5)]
     w_kills: f32,
+    /// Weight for salvage actions in fitness
+    #[clap(long, default_value_t = 0.0)]
+    w_salvage: f32,
+    /// Weight for exploration (thrust) actions in fitness
+    #[clap(long, default_value_t = 0.0)]
+    w_explore: f32,
     /// Optional override for run ID
     #[clap(long)]
     run_id: Option<String>,
@@ -169,10 +175,14 @@ struct PipelineOpts {
 }
 
 /// Available fitness function types
+#[clap(rename_all = "kebab-case")]
 #[derive(ValueEnum, Clone, Debug)]
 enum FitnessFnArg {
     HealthPlusDamage,
     HealthPlusDamageTime,
+    HealthDamageSalvage,
+    HealthDamageExplore,
+    HealthDamageTimeSalvageExplore,
 }
 
 /// Run CPU or MPS inference bench and exit
@@ -285,14 +295,16 @@ fn run_bench(opts: &BenchOpts) {
 
 /// Run the NEAT training loop with snapshots and status logs
 fn run_train(opts: &TrainOpts) -> String {
+    println!("[debug][run_train] workers flag = {}", opts.workers);
     ThreadPoolBuilder::new().num_threads(opts.workers).build_global().unwrap();
+    println!("[debug][run_train] rayon threadpool size = {}", rayon::current_num_threads());
     fs::create_dir_all("out").unwrap();
     // generate run-specific ID and create output directory
     let ts = Utc::now().format("%Y%m%d_%H%M%S").to_string();
     let fn_name = opts.fitness_fn.to_possible_value().unwrap().get_name().to_string();
     let id = opts.run_id.clone().unwrap_or_else(|| format!(
-        "{}-fn-{}-h{:.1}-d{:.1}-k{:.1}",
-        ts, fn_name, opts.w_health, opts.w_damage, opts.w_kills
+        "{}-fn-{}-h{:.1}-d{:.1}-k{:.1}-s{:.1}-e{:.1}",
+        ts, fn_name, opts.w_health, opts.w_damage, opts.w_kills, opts.w_salvage, opts.w_explore
     ));
     println!("Run ID: {}", id);
     let out_dir = format!("out/{}", id);
@@ -458,6 +470,8 @@ fn run_train(opts: &TrainOpts) -> String {
                     "w_health": opts.w_health,
                     "w_damage": opts.w_damage,
                     "w_kills": opts.w_kills,
+                    "w_salvage": opts.w_salvage,
+                    "w_explore": opts.w_explore,
                     "random_seed": opts.random_seed,
                     "map_var": opts.map_var,
                     "run_id": opts.run_id
@@ -486,6 +500,8 @@ fn run_train(opts: &TrainOpts) -> String {
                     "health": evo_cfg.w_health,
                     "damage": evo_cfg.w_damage,
                     "kills": evo_cfg.w_kills,
+                    "salvage": evo_cfg.w_salvage,
+                    "explore": evo_cfg.w_explore,
                     "time_bonus": evo_cfg.time_bonus_weight
                 },
                 "instrumentation": {
@@ -548,11 +564,16 @@ fn run_train(opts: &TrainOpts) -> String {
         evo_cfg.fitness_fn = match opts.fitness_fn {
             FitnessFnArg::HealthPlusDamage => FitnessFn::HealthPlusDamage,
             FitnessFnArg::HealthPlusDamageTime => FitnessFn::HealthPlusDamageTime,
+            FitnessFnArg::HealthDamageSalvage => FitnessFn::HealthDamageSalvage,
+            FitnessFnArg::HealthDamageExplore => FitnessFn::HealthDamageExplore,
+            FitnessFnArg::HealthDamageTimeSalvageExplore => FitnessFn::HealthDamageTimeSalvageExplore,
         };
         evo_cfg.time_bonus_weight = opts.time_bonus_weight;
         evo_cfg.w_health = opts.w_health;
         evo_cfg.w_damage = opts.w_damage;
         evo_cfg.w_kills = opts.w_kills;
+        evo_cfg.w_salvage = opts.w_salvage;
+        evo_cfg.w_explore = opts.w_explore;
         gen += 1;
     }
     // Print cumulative profiling results
@@ -593,7 +614,7 @@ fn run_tournament(opts: &TournamentOpts) {
     sim_cfg.python_service_url = None;
     let mut evo_cfg = EvolutionConfig::default();
     evo_cfg.num_teams = 2;
-    evo_cfg.team_size = 1;
+    evo_cfg.team_size = 4;
     evo_cfg.max_ticks = 200;
     // Gather participants: try explicit files first, then dir; skip invalid
     let mut participants: Vec<(String, Option<Genome>)> = Vec::new();
@@ -659,18 +680,25 @@ fn run_tournament(opts: &TournamentOpts) {
     let outcomes = pairs.into_par_iter()
         .progress_count(total_pairs)
         .map(|(i, j)| {
-            // instantiate competitor brains
-            let brain_i: Box<dyn Brain> = if let Some(ref gi) = participants[i].1 {
-                Box::new(NeatBrain::new(gi.clone(), sim_cfg.batch_size, String::new()))
-            } else {
-                Box::new(NaiveBrain(NaiveAgent::new(sim_cfg.max_speed, 10.0)))
-            };
-            let brain_j: Box<dyn Brain> = if let Some(ref gj) = participants[j].1 {
-                Box::new(NeatBrain::new(gj.clone(), sim_cfg.batch_size, String::new()))
-            } else {
-                Box::new(NaiveBrain(NaiveAgent::new(sim_cfg.max_speed, 10.0)))
-            };
-            let stats = run_match(&sim_cfg, &evo_cfg, vec![(brain_i, 0), (brain_j, 1)]);
+            // spawn 4v4 match: 4 copies per side
+            let mut agents: Vec<(Box<dyn Brain>, u32)> = Vec::with_capacity((evo_cfg.team_size * 2) as usize);
+            for _ in 0..evo_cfg.team_size {
+                let bi: Box<dyn Brain> = if let Some(ref gi) = participants[i].1 {
+                    Box::new(NeatBrain::new(gi.clone(), sim_cfg.batch_size, sim_cfg.python_service_url.clone().unwrap_or_default())) as Box<dyn Brain>
+                } else {
+                    Box::new(NaiveBrain(NaiveAgent::new(sim_cfg.max_speed, 10.0)))
+                };
+                agents.push((bi, 0));
+            }
+            for _ in 0..evo_cfg.team_size {
+                let bj: Box<dyn Brain> = if let Some(ref gj) = participants[j].1 {
+                    Box::new(NeatBrain::new(gj.clone(), sim_cfg.batch_size, sim_cfg.python_service_url.clone().unwrap_or_default())) as Box<dyn Brain>
+                } else {
+                    Box::new(NaiveBrain(NaiveAgent::new(sim_cfg.max_speed, 10.0)))
+                };
+                agents.push((bj, 1));
+            }
+            let stats = run_match(&sim_cfg, &evo_cfg, agents);
             let win_i = stats.subject_team_health > 0.0;
             (i, j, win_i)
         }).collect::<Vec<_>>();

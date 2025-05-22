@@ -25,6 +25,10 @@ pub struct EvolutionConfig {
     pub w_damage: f32,
     /// Weight for kills in fitness
     pub w_kills: f32,
+    /// Weight for salvage actions in fitness
+    pub w_salvage: f32,
+    /// Weight for exploration (thrust) actions in fitness
+    pub w_explore: f32,
     /// Weight for time-to-win bonus (only for time-based fitness)
     pub time_bonus_weight: f32,
     pub fitness_fn: FitnessFn,
@@ -37,6 +41,12 @@ pub enum FitnessFn {
     HealthPlusDamage,
     /// health + damage + time-to-win bonus
     HealthPlusDamageTime,
+    /// health + damage + salvage term
+    HealthDamageSalvage,
+    /// health + damage + exploration term
+    HealthDamageExplore,
+    /// health + damage + time bonus + salvage + exploration
+    HealthDamageTimeSalvageExplore,
 }
 
 impl Default for EvolutionConfig {
@@ -59,6 +69,8 @@ impl Default for EvolutionConfig {
             w_health: 1.0,
             w_damage: 1.0,
             w_kills: 0.5,
+            w_salvage: 0.0,
+            w_explore: 0.0,
             time_bonus_weight: 0.1,
             fitness_fn: FitnessFn::HealthPlusDamage,
         }
@@ -67,21 +79,24 @@ impl Default for EvolutionConfig {
 
 impl FitnessFn {
     pub fn compute(&self, stats: &MatchStats, evo_cfg: &EvolutionConfig) -> f32 {
+        // Base health, damage, kills
+        let hd = stats.subject_team_health * evo_cfg.w_health
+            + stats.total_damage_inflicted * evo_cfg.w_damage
+            + stats.kills as f32 * evo_cfg.w_kills;
+        // Supplemental terms
+        let salvage_term = stats.salvage_actions * evo_cfg.w_salvage;
+        let explore_term = stats.exploration_actions * evo_cfg.w_explore;
+        let time_bonus = if stats.subject_team_health > 0.0 {
+            evo_cfg.time_bonus_weight * ((evo_cfg.max_ticks as f32) - stats.ticks as f32)
+        } else {
+            0.0
+        };
         match self {
-            FitnessFn::HealthPlusDamage =>
-                stats.subject_team_health * evo_cfg.w_health
-                + stats.total_damage_inflicted * evo_cfg.w_damage
-                + stats.kills as f32 * evo_cfg.w_kills,
-            FitnessFn::HealthPlusDamageTime => {
-                let perf = stats.subject_team_health * evo_cfg.w_health
-                    + stats.total_damage_inflicted * evo_cfg.w_damage
-                    + stats.kills as f32 * evo_cfg.w_kills;
-                if stats.subject_team_health > 0.0 {
-                    perf + evo_cfg.time_bonus_weight * ((evo_cfg.max_ticks as f32) - stats.ticks as f32)
-                } else {
-                    perf
-                }
-            }
+            FitnessFn::HealthPlusDamage => hd,
+            FitnessFn::HealthPlusDamageTime => hd + time_bonus,
+            FitnessFn::HealthDamageSalvage => hd + salvage_term,
+            FitnessFn::HealthDamageExplore => hd + explore_term,
+            FitnessFn::HealthDamageTimeSalvageExplore => hd + salvage_term + explore_term + time_bonus,
         }
     }
 }

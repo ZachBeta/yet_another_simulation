@@ -58,30 +58,42 @@ impl Population {
             v
         };
         if evo_cfg.team_size > 1 {
-            let mut rng = thread_rng();
+            // Parallel multi-team match evaluation
             let matches_per_gen = evo_cfg.pop_size * evo_cfg.tournament_k;
-            for _ in 0..matches_per_gen {
-                let ids = (0..n).choose_multiple(&mut rng, evo_cfg.team_size * evo_cfg.num_teams);
-                let (team_a, team_b) = ids.split_at(evo_cfg.team_size);
-                // A vs B
-                let stats_a = run_match(sim_cfg, evo_cfg, make_agents(team_a, team_b));
-                let fit_a = evo_cfg.fitness_fn.compute(&stats_a, evo_cfg) / (evo_cfg.team_size as f32);
-                // B vs A
-                let stats_b = run_match(sim_cfg, evo_cfg, make_agents(team_b, team_a));
-                let fit_b = evo_cfg.fitness_fn.compute(&stats_b, evo_cfg) / (evo_cfg.team_size as f32);
-                for &i in team_a { fitness_acc[i] += fit_a; counts[i] += 1; }
-                for &j in team_b { fitness_acc[j] += fit_b; counts[j] += 1; }
-            }
-            // assign averaged fitness
-            for (i, genome) in self.genomes.iter_mut().enumerate() {
-                if counts[i] > 0 {
-                    genome.fitness = fitness_acc[i] / (counts[i] as f32);
+            let (fitness_acc_res, counts_res) = (0..matches_per_gen)
+                .into_par_iter()
+                .map(|_| {
+                    let mut local_rng = thread_rng();
+                    let ids = (0..n).choose_multiple(&mut local_rng, evo_cfg.team_size * evo_cfg.num_teams);
+                    let (team_a, team_b) = ids.split_at(evo_cfg.team_size);
+                    let stats_a = run_match(sim_cfg, evo_cfg, make_agents(team_a, team_b));
+                    let fit_a = evo_cfg.fitness_fn.compute(&stats_a, evo_cfg) / (evo_cfg.team_size as f32);
+                    let stats_b = run_match(sim_cfg, evo_cfg, make_agents(team_b, team_a));
+                    let fit_b = evo_cfg.fitness_fn.compute(&stats_b, evo_cfg) / (evo_cfg.team_size as f32);
+                    let mut acc = vec![0.0; n];
+                    let mut cnt = vec![0; n];
+                    for &i in team_a { acc[i] += fit_a; cnt[i] += 1; }
+                    for &j in team_b { acc[j] += fit_b; cnt[j] += 1; }
+                    (acc, cnt)
+                })
+                .reduce(
+                    || (vec![0.0; n], vec![0; n]),
+                    |(mut acc1, mut cnt1), (acc2, cnt2)| {
+                        for idx in 0..n {
+                            acc1[idx] += acc2[idx];
+                            cnt1[idx] += cnt2[idx];
+                        }
+                        (acc1, cnt1)
+                    }
+                );
+            for i in 0..n {
+                if counts_res[i] > 0 {
+                    self.genomes[i].fitness = fitness_acc_res[i] / (counts_res[i] as f32);
                 }
             }
         } else {
             // fall back to 1v1 evaluate & naive baseline
             // Round-robin evaluation using Rayon
-            let n = snapshot.len();
             self.genomes.par_iter_mut().enumerate().for_each(|(i, genome)| {
                 for j in 0..n {
                     if i == j {
