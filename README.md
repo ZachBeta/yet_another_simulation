@@ -1,84 +1,124 @@
 # Yet Another Simulation
 
-A WebAssembly-powered battle simulation running in the browser.
+A WebAssembly-powered neural network battle simulation. Watch AI agents trained with NEAT evolution battle each other in real-time.
 
-## Prerequisites
+## Quick Start (2 minutes)
 
-- Rust and Cargo (https://www.rust-lang.org/tools/install)
-- wasm-pack (`cargo install wasm-pack`)
-- Node.js v14+ and npm
-
-## Building the WASM Module
-
+### Prerequisites
 ```bash
-cd sim_core
-wasm-pack build --target web --out-dir ../wasm/pkg
+# Install Rust and wasm-pack
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source ~/.cargo/env
+cargo install wasm-pack
+
+# Install Node.js (any recent version)
+# macOS: brew install node
+# Or download from: https://nodejs.org/
 ```
 
-## Installation
-
+### Run the Simulation
 ```bash
+git clone <your-repo>
+cd yet_another_simulation
+
+# Install dependencies and start
 npm install
-```
-
-## Running Locally
-
-```bash
 npm start
+
+# Open http://localhost:8000
+# Select a trained model from the dropdown and watch the battle!
 ```
 
-Open [http://localhost:8000](http://localhost:8000) in your browser.
+**That's it!** The repository includes 58 pre-trained AI models ready to use.
 
-## Testing
+## What You'll See
+
+- **Colored dots**: Each represents an AI agent with neural network decision-making
+- **Model dropdown**: Different AI models trained with various parameters
+- **Real-time combat**: Agents use weapons, steering behaviors, and strategy
+- **Team battles**: 1v1, 2v2, 3v3, or 4v4 configurations
+- **Elo ratings**: Models ranked by tournament performance
+
+## Current Scripts (All Working)
+
+### For Users
+```bash
+npm start                        # Run the simulation
+npm test                         # Run UI tests
+node scripts/generate_runs.js    # Refresh model catalog
+```
+
+### For Training New Models  
+```bash
+node scripts/run_experiments.js      # Train multiple model variants (~hours)
+node scripts/run_tournaments.js      # Run tournaments on trained models
+node scripts/run_global_tournament.js # Cross-parameter model comparison
+node scripts/compare_fitness_variants.js # Compare different fitness functions
+```
+
+## File Structure (What Matters)
+
+```
+├── index.html           # Simulation interface
+├── script.js            # Frontend logic  
+├── wasm/pkg/           # Compiled WASM module (pre-built)
+├── sim_core/out/       # 58 trained models (ready to use)
+│   ├── runs.json       # Model catalog for frontend
+│   └── */              # Individual model directories
+└── scripts/            # Working automation scripts
+```
+
+## Understanding the Models
+
+Each model in the dropdown shows:
+- **Team size**: 1v1, 2v2, 3v3, 4v4
+- **Duration**: 30s, 60s, 120s battle length used for training
+- **Fitness function**: What the AI optimized for
+  - `health-plus-damage`: Survival + combat effectiveness
+  - `health-damage-salvage`: Above + resource collection
+  - `health-damage-explore`: Above + map exploration
+- **Elo rating**: Performance against other models
+
+Try different models to see how training parameters affect behavior!
+
+## Training Your Own Models
+
+The existing training system works but takes time:
 
 ```bash
-npm test           # Run JS tests via Jest
-cargo test         # Run Rust unit tests
-wasm-pack test --headless --chrome   # Run WASM binding tests
+# Full training suite (creates many model variants)
+node scripts/run_experiments.js
+
+# This will:
+# - Train 1v1, 2v2, 3v3, 4v4 team configurations  
+# - Use 30s and 60s battle durations
+# - Try different fitness functions
+# - Take several hours total
+# - Output to sim_core/out/<model-name>/
 ```
 
-## Current State
-
-- Four teams (orange, yellow, green, blue) battle each other in their quadrants.
-- Agents use simple nearest-enemy targeting + separation and melee attack.
-- Next: integrate neural-network decision making for approach/orbit/target/fire/salvage loop.
-
-## Python ONNX Microservice
-
-Follow the tutorial for environment setup, model export, and running the service:
-
+After training, update the model catalog:
 ```bash
-cd python_onnx_service/
-# Activate your virtualenv
-source .venv/bin/activate
-# Run with uvicorn (provided by the venv)
-python -m uvicorn app:app --reload --host 127.0.0.1 --port 8000
+node scripts/run_tournaments.js     # Generate Elo ratings
+node scripts/generate_runs.js       # Update frontend catalog
 ```
 
-See `sim_core/docs/python_microservice_tutorial.md` for full instructions.
+## Troubleshooting
 
-## Rust Inference Benchmarking
+**Models not loading**: Run `node scripts/generate_runs.js`
+**Port 8000 busy**: Use `npm start -- --port=8001`  
+**Build issues**: The WASM module is pre-built, but if needed: `cd sim_core && wasm-pack build --target web --out-dir ../wasm/pkg`
 
-To benchmark the Python microservice with minimal noise, run:
+## Technical Details
 
-```bash
-cd sim_core
-RUSTFLAGS="-Awarnings" cargo run --quiet -- --device mps --runs <runs> --batch=true --batch-size <size>
-```
+- **Rust WASM core**: High-performance simulation engine
+- **NEAT evolution**: Topology-evolving neural networks
+- **Real-time visualization**: Canvas-based rendering
+- **Model persistence**: JSON format for easy sharing
+- **Tournament system**: Elo rating-based model comparison
 
-- `--quiet` hides Cargo compile messages
-- `RUSTFLAGS="-Awarnings"` suppresses rustc warnings
-- `--batch` toggles to the batched endpoint
-- `--batch-size` sets the number of inputs per batch
+The simulation demonstrates emergent AI behavior where simple rules create complex strategy.
 
 ## Screenshots
 
-![Screenshot 2025-05-04 12:35:25](./Screenshot%202025-05-04%20at%2012.35.25.png)
-
-![Screenshot 2025-05-04 12:35:33](./Screenshot%202025-05-04%20at%2012.35.33.png)
-
-![Screenshot 2025-05-04 12:35:56](./Screenshot%202025-05-04%20at%2012.35.56.png)
-
-![Screenshot 2025-05-04 12:36:24](./Screenshot%202025-05-04%20at%2012.36.24.png)
-
-![Screenshot 2025-05-04 12:36:47](./Screenshot%202025-05-04%20at%2012.36.47.png)
+![Battle Simulation](./Screenshot%202025-05-04%20at%2012.35.25.png)
