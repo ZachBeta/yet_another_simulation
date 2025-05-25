@@ -602,10 +602,7 @@ def cmd_harvest(args):
     
     print(f"🎯 Found {len(harvestable)} files to analyze for organization...")
     
-    # Categorize files using our existing system
-    rules_path = Path(__file__).parent / 'scripts' / 'doc_rules.json'
-    categorizer = DocumentCategorizer(str(rules_path))
-    
+    # Categorize files using the improved system
     organized_count = 0
     skipped_count = 0
     
@@ -616,8 +613,8 @@ def cmd_harvest(args):
                 skipped_count += 1
                 continue
                 
-            # Categorize the file
-            doc = categorizer.categorize_file(file_path)
+            # Categorize the file using the improved analysis
+            doc = analyze_file(file_path)
             
             # Get target location
             target_folder = get_target_folder(doc.category)
