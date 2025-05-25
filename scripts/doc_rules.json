@@ -1,0 +1,35 @@
+{
+  "categories": {
+    "agents": {
+      "patterns": ["agent", "perception", "brain", "decision", "sensor", "behavior"],
+      "files": ["AGENT_", "SENSOR_"],
+      "description": "AI behavior, sensors, decision-making"
+    },
+    "training": {
+      "patterns": ["training", "neat", "evolution", "fitness", "tournament", "experiment"],
+      "files": ["TRAINING", "NEAT_"],
+      "description": "Learning, evolution, optimization"
+    },
+    "gameplay": {
+      "patterns": ["gameplay", "combat", "simulation", "physics", "battle", "team"],
+      "files": ["GAMEPLAY", "SIMULATION", "COMBAT", "BROWSER_"],
+      "description": "Game mechanics, physics, rules"
+    },
+    "development": {
+      "patterns": ["development", "architecture", "setup", "build", "performance", "benchmark"],
+      "files": ["DEVELOPMENT", "ARCHITECTURE", "PERFORMANCE"],
+      "description": "Building, setup, architecture"
+    },
+    "guides": {
+      "patterns": ["tutorial", "guide", "howto", "walkthrough", "getting started"],
+      "files": ["GUIDE_", "TUTORIAL_"],
+      "description": "Step-by-step instructions"
+    },
+    "reference": {
+      "patterns": ["api", "reference", "specification", "interface", "documentation"],
+      "files": ["API_", "SPEC_", "DOCS_", "DOCUMENTATION_"],
+      "description": "Technical references, APIs"
+    }
+  },
+  "default_category": "misc"
+}
